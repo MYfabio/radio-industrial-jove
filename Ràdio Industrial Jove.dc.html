@@ -40,7 +40,6 @@
         </sc-for>
         <button onClick="{{goPujar}}" style="background:#F5B41E; color:#0E2A4E; border:none; cursor:pointer; padding:10px 16px; border-radius:999px; font-size:15px; font-weight:700; margin-left:8px;" style-hover="background:#FFC94A;">Puja el teu programa</button>
         <button onClick="{{goAdmin}}" style="background:none; border:1px solid #3B5A80; color:#8FBEE0; cursor:pointer; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600; margin-left:4px;" style-hover="border-color:#8FBEE0; color:#fff;">Docents</button>
-        <button onClick="{{openEditor}}" style="background:none; border:none; color:#8FBEE0; cursor:pointer; padding:8px 14px; font-size:18px; margin-left:4px;" style-hover="color:#F5B41E;" title="Editor" aria-label="Obrir editor">✏️</button>
       </nav>
     </div>
   </header>
@@ -420,56 +419,6 @@
     <div role="status" style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#16324F; color:#fff; padding:12px 24px; border-radius:999px; font-size:14px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.3); z-index:100;">{{toast}}</div>
   </sc-if>
 
-  <!-- ============ LOGIN EDITOR MODAL ============ -->
-  <sc-if value="{{editorLoginShow}}" hint-placeholder-val="{{false}}">
-    <div style="position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:300;">
-      <div style="background:#fff; border-radius:16px; padding:32px 28px; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-        <h2 style="margin:0 0 8px; font-size:24px; font-weight:800; color:#0E2A4E;">Accés editor</h2>
-        <p style="margin:0 0 20px; font-size:14px; color:#5B7A99;">Zona restringida per a editors i docents.</p>
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <input type="password" value="{{editorAuthPass}}" onChange="{{onEditorAuthPass}}" onKeyDown="{{onEditorAuthKey}}" placeholder="Contrasenya" style="padding:12px 14px; border:1px solid #C6DBEC; border-radius:10px; font-size:14px; font-family:inherit;">
-          <sc-if value="{{editorAuthErr}}" hint-placeholder-val="{{false}}">
-            <p style="margin:0; color:#C0392B; font-size:13px; font-weight:600;">Contrasenya incorrecta</p>
-          </sc-if>
-          <button onClick="{{editorLogin}}" style="background:#0E2A4E; color:#fff; border:none; cursor:pointer; padding:12px 16px; border-radius:10px; font-size:14px; font-weight:700;">Entra</button>
-          <button onClick="{{closeEditorLogin}}" style="background:none; border:1px solid #C6DBEC; color:#5B7A99; cursor:pointer; padding:12px 16px; border-radius:10px; font-size:14px; font-weight:600;">Cancel·la</button>
-        </div>
-      </div>
-    </div>
-  </sc-if>
-
-  <!-- ============ EDITOR PANEL ============ -->
-  <sc-if value="{{editorShow}}" hint-placeholder-val="{{false}}">
-    <div style="position:fixed; bottom:24px; right:24px; width:380px; max-height:80vh; background:#fff; border-radius:16px; box-shadow:0 12px 48px rgba(0,0,0,0.25); display:flex; flex-direction:column; z-index:250; overflow:hidden;">
-      <div style="background:#0E2A4E; color:#fff; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:18px;">✏️</span>
-          <h2 style="margin:0; font-size:16px; font-weight:800;">Editor en viu</h2>
-        </div>
-        <button onClick="{{closeEditor}}" style="background:none; border:none; color:#fff; cursor:pointer; font-size:20px; padding:0; width:28px; height:28px; display:flex; align-items:center; justify-content:center;">×</button>
-      </div>
-      <div style="flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:14px;">
-        <div>
-          <label style="display:block; font-size:12px; font-weight:700; color:#5B7A99; margin-bottom:6px;">Comanda per a Claude</label>
-          <textarea value="{{editorCommand}}" onChange="{{onEditorCommand}}" placeholder="Ej: Genera un títol elegant per a la ràdio..." style="width:100%; padding:10px 12px; border:1px solid #C6DBEC; border-radius:8px; font-size:13px; font-family:inherit; resize:vertical; min-height:80px;"></textarea>
-          <p style="margin:6px 0 0; font-size:11px; color:#8AA5BF; line-height:1.4;">💡 Exemples: "Canvia el títol a...", "Genera una descripció", "Suggereix etiquetes"</p>
-        </div>
-        <sc-if value="{{editorLoading}}" hint-placeholder-val="{{false}}">
-          <div style="padding:12px; background:#EAF3FB; border-radius:8px; text-align:center; color:#2B9FE3; font-size:13px; font-weight:600;">Processant amb Claude...</div>
-        </sc-if>
-        <sc-if value="{{editorResponse}}" hint-placeholder-val="{{false}}">
-          <div style="padding:12px; background:#E3F4E8; border-radius:8px; border-left:4px solid #1F8A4C;">
-            <p style="margin:0; font-size:12px; color:#1F8A4C; font-weight:600; margin-bottom:6px;">Resposta de Claude:</p>
-            <p style="margin:0; font-size:13px; color:#16324F; line-height:1.5;">{{editorResponse}}</p>
-          </div>
-        </sc-if>
-      </div>
-      <div style="background:#F2F7FC; border-top:1px solid #C6DBEC; padding:12px 16px; display:flex; gap:8px; flex-shrink:0;">
-        <button onClick="{{sendEditorCommand}}" style="flex:1; background:#F5B41E; color:#0E2A4E; border:none; cursor:pointer; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:700;">Envia a Claude</button>
-      </div>
-    </div>
-  </sc-if>
-
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;maxUploadMB&quot;: {&quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 50, &quot;tsType&quot;: &quot;number&quot;, &quot;min&quot;: 5, &quot;max&quot;: 500, &quot;unit&quot;: &quot;MB&quot;, &quot;section&quot;: &quot;Pujada d'arxius&quot;}, &quot;adminPassword&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;docent2026&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Accés docent&quot;}, &quot;showDemoHint&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Accés docent&quot;}}">
@@ -491,14 +440,7 @@ class Component extends DCLogic {
     form: { title: '', desc: '', cat: '', author: '', tags: '', rights: false, fileName: '', fileError: '', coverName: '' },
     formError: '',
     sent: false,
-    toast: '',
-    editorOpen: false,
-    editorAuth: false,
-    editorAuthPass: '',
-    editorAuthErr: false,
-    editorCommand: '',
-    editorLoading: false,
-    editorResponse: ''
+    toast: ''
   };
 
   CATS = [
@@ -807,29 +749,7 @@ class Component extends DCLogic {
 
       // toast
       toast: s.toast,
-      hasToast: !!s.toast,
-
-      // editor
-      editorLoginShow: !s.editorAuth && s.editorOpen,
-      editorShow: s.editorOpen && s.editorAuth,
-      openEditor: () => this.setState({ editorOpen: true }),
-      closeEditor: () => this.setState({ editorOpen: false, editorResponse: '' }),
-      onEditorAuthPass: e => this.setState({ editorAuthPass: e.target.value, editorAuthErr: false }),
-      onEditorAuthKey: e => { if (e.key === 'Enter') this.tryEditorLogin(demoPass); },
-      editorLogin: () => this.tryEditorLogin(demoPass),
-      closeEditorLogin: () => this.setState({ editorOpen: false, editorAuthPass: '', editorAuthErr: false }),
-      editorAuthPass: s.editorAuthPass,
-      editorAuthErr: s.editorAuthErr,
-      editorCommand: s.editorCommand,
-      editorLoading: s.editorLoading,
-      editorResponse: s.editorResponse,
-      onEditorCommand: e => this.setState({ editorCommand: e.target.value }),
-      sendEditorCommand: () => {
-        if (s.editorCommand.trim()) {
-          this.sendToClaudeAPI(s.editorCommand);
-          this.setState({ editorCommand: '' });
-        }
-      }
+      hasToast: !!s.toast
     };
   }
 
@@ -838,37 +758,6 @@ class Component extends DCLogic {
       this.setState({ adminAuth: true, adminErr: false, adminPassInput: '' });
     } else {
       this.setState({ adminErr: true });
-    }
-  }
-
-  tryEditorLogin(demoPass) {
-    if (this.state.editorAuthPass === demoPass) {
-      this.setState({ editorAuth: true, editorAuthErr: false, editorAuthPass: '', editorOpen: true });
-    } else {
-      this.setState({ editorAuthErr: true });
-    }
-  }
-
-  async sendToClaudeAPI(message) {
-    try {
-      this.setState({ editorLoading: true });
-      const response = await fetch('/api/claude', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
-      });
-      const data = await response.json();
-      if (data.success) {
-        this.setState({ editorResponse: data.response, editorLoading: false });
-        this.showToast('Claude respondió');
-        setTimeout(() => this.setState({ editorResponse: '' }), 5000);
-      } else {
-        this.setState({ editorLoading: false });
-        this.showToast('Error: ' + (data.error || 'Error desconocido'));
-      }
-    } catch (error) {
-      this.setState({ editorLoading: false });
-      this.showToast('Error de conexión: ' + error.message);
     }
   }
 }
