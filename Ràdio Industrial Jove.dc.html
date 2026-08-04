@@ -162,6 +162,12 @@
               <p style="margin:0; color:#8FBEE0; font-size:12px;">Gravació enregistrada directament des del navegador.</p>
             </div>
           </sc-if>
+          <sc-if value="{{det.hasTranscript}}" hint-placeholder-val="{{false}}">
+            <details style="background:#fff; border:1px solid #C6DBEC; border-radius:12px; padding:14px 16px;">
+              <summary style="cursor:pointer; font-size:14px; font-weight:700; color:#16324F;">📝 Transcripció</summary>
+              <p style="margin:10px 0 0; font-size:14px; line-height:1.6; color:#16324F;">{{det.transcript}}</p>
+            </details>
+          </sc-if>
           <sc-if value="{{det.noAudio}}" hint-placeholder-val="{{true}}">
             <div style="background:#0E2A4E; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:12px;">
               <div style="display:flex; align-items:center; gap:14px;">
@@ -266,6 +272,37 @@
             </sc-if>
             <p style="margin:0; color:#8AA5BF; font-size:12px;">La gravació es fa amb el micròfon del navegador; cal donar permís d'accés.</p>
           </div>
+          <sc-if value="{{hasTranscript}}" hint-placeholder-val="{{false}}">
+            <div style="background:#fff; border:1px solid #C6DBEC; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">📝</span>
+                <strong style="font-size:14px;">Transcripció automàtica</strong>
+              </div>
+              <p style="margin:0; font-size:13px; line-height:1.6; color:#16324F; max-height:140px; overflow-y:auto; background:#F7FBFE; border-radius:8px; padding:10px;">{{transcript}}</p>
+              <sc-if value="{{hasSuggestions}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex; flex-direction:column; gap:8px; border-top:1px solid #EAF3FB; padding-top:10px;">
+                  <strong style="font-size:13px; color:#5B7A99;">Suggeriments automàtics</strong>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <span style="font-size:13px; color:#5B7A99;">Títol:</span>
+                    <span style="font-size:13px; font-weight:700;">{{suggestedTitle}}</span>
+                    <button type="button" onClick="{{applyTitle}}" style="background:#EAF3FB; color:#16324F; border:none; cursor:pointer; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700;">Fes servir</button>
+                  </div>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <span style="font-size:13px; color:#5B7A99;">Etiquetes:</span>
+                    <span style="font-size:13px; font-weight:700;">{{suggestedTags}}</span>
+                    <button type="button" onClick="{{applyTags}}" style="background:#EAF3FB; color:#16324F; border:none; cursor:pointer; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700;">Fes servir</button>
+                  </div>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <span style="font-size:13px; color:#5B7A99;">Descripció:</span>
+                    <button type="button" onClick="{{applyDesc}}" style="background:#EAF3FB; color:#16324F; border:none; cursor:pointer; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700;">Omple amb el resum</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{transcriptUnsupported}}" hint-placeholder-val="{{false}}">
+            <p style="margin:0; color:#8AA5BF; font-size:12px;">La transcripció automàtica no està disponible en aquest navegador (funciona a Chrome i Edge).</p>
+          </sc-if>
           <label style="display:flex; flex-direction:column; gap:6px; font-size:14px; font-weight:700;">Imatge de portada (opcional)
             <input type="file" accept="image/*" onChange="{{onCover}}" style="padding:10px; border-radius:10px; border:1px dashed #C6DBEC; background:#FAFCFE; font-size:14px;">
             <sc-if value="{{coverOk}}" hint-placeholder-val="{{false}}">
@@ -531,6 +568,9 @@ class Component extends DCLogic {
     recordedUrl: '',
     recordError: '',
     processingAudio: false,
+    transcript: '',
+    transcriptSupported: true,
+    suggestions: null,
     editorOpen: false,
     editorAuth: false,
     editorAuthPass: '',
@@ -580,6 +620,7 @@ class Component extends DCLogic {
     clearInterval(this.timer);
     clearInterval(this.recordTimer);
     if (this.mediaStream) this.mediaStream.getTracks().forEach(t => t.stop());
+    if (this.recognition) { try { this.recognition.stop(); } catch (e) {} }
   }
 
   load() {
@@ -692,6 +733,7 @@ class Component extends DCLogic {
       det = this.vm(detRaw);
       det.hasAudio = !!detRaw.audioData;
       det.noAudio = !detRaw.audioData;
+      det.hasTranscript = !!detRaw.transcript;
       const playing = s.playingId === detRaw.id;
       det.playIcon = playing ? '❚❚' : '▶';
       det.progressPct = playing ? s.progress.toFixed(1) + '%' : '0%';
@@ -779,6 +821,15 @@ class Component extends DCLogic {
       startRecording: () => this.startRecording(),
       stopRecording: () => this.stopRecording(),
       discardRecording: () => this.discardRecording(),
+      transcript: s.transcript,
+      hasTranscript: !!s.transcript.trim(),
+      transcriptUnsupported: !s.transcriptSupported,
+      hasSuggestions: !!s.suggestions,
+      suggestedTitle: s.suggestions ? s.suggestions.title : '',
+      suggestedTags: s.suggestions ? s.suggestions.tags : '',
+      applyTitle: () => this.setForm('title', s.suggestions ? s.suggestions.title : ''),
+      applyTags: () => this.setForm('tags', s.suggestions ? s.suggestions.tags : ''),
+      applyDesc: () => this.setForm('desc', s.suggestions ? s.suggestions.summary : ''),
       formErr: !!s.formError,
       formError: s.formError,
       onTitle: e => this.setForm('title', e.target.value),
@@ -825,7 +876,7 @@ class Component extends DCLogic {
         d.added.push({
           id: 'u' + Date.now(),
           title: f.title.trim(), desc: f.desc.trim(), cat: f.cat, author: f.author.trim(),
-          tags: f.tags, fileName: f.fileName, coverName: f.coverName, audioData: f.audioData || '',
+          tags: f.tags, fileName: f.fileName, coverName: f.coverName, audioData: f.audioData || '', transcript: s.transcript.trim(),
           date: String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear(),
           dur: '—', featured: false, status: 'pendent'
         });
@@ -840,7 +891,9 @@ class Component extends DCLogic {
         recordSeconds: 0,
         recordedUrl: '',
         recordError: '',
-        processingAudio: false
+        processingAudio: false,
+        transcript: '',
+        suggestions: null
       }),
 
       // categories
@@ -991,7 +1044,8 @@ class Component extends DCLogic {
         });
       };
       mr.start();
-      this.setState({ recording: true, recordSeconds: 0, recordedUrl: '' });
+      this.setState({ recording: true, recordSeconds: 0, recordedUrl: '', transcript: '', suggestions: null });
+      this.startTranscription();
       this.recordTimer = setInterval(() => {
         this.setState(s => ({ recordSeconds: s.recordSeconds + 1 }));
       }, 1000);
@@ -1004,14 +1058,60 @@ class Component extends DCLogic {
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       this.mediaRecorder.stop();
     }
+    this.stopTranscription();
   }
 
   discardRecording() {
     this.setState(s => ({
       recordedUrl: '',
       recordSeconds: 0,
+      transcript: '',
+      suggestions: null,
       form: Object.assign({}, s.form, { fileName: '', audioData: '' })
     }));
+  }
+
+  startTranscription() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { this.setState({ transcriptSupported: false }); return; }
+    const rec = new SR();
+    this.recognition = rec;
+    rec.lang = 'ca-ES';
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.onresult = e => {
+      let added = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) added += e.results[i][0].transcript;
+      }
+      if (added) this.setState(s => ({ transcript: (s.transcript + ' ' + added).trim() }));
+    };
+    rec.onerror = () => {};
+    try { rec.start(); } catch (e) { this.setState({ transcriptSupported: false }); }
+  }
+
+  stopTranscription() {
+    if (this.recognition) {
+      try { this.recognition.stop(); } catch (e) {}
+      this.recognition = null;
+    }
+    setTimeout(() => {
+      const text = this.state.transcript.trim();
+      if (text) this.setState({ suggestions: this.buildSuggestions(text) });
+    }, 400);
+  }
+
+  buildSuggestions(text) {
+    const stop = new Set(['que','de','la','el','els','les','un','una','uns','unes','i','o','a','en','amb','per','del','dels','al','als','es','se','ho','hi','no','si','ja','molt','més','com','què','qui','on','quan','este','aquest','aquesta','aquests','aquestes','ser','fer','tenir','haver','està','estan','som','sou','són','he','ha','han','hem','heu','meu','teu','seu','nostre','vostre','però','doncs','també','tot','tots','tota','totes','cada','aquí','allà','ara','avui','sobre','entre','fins','des','sense','molt','bé','va','van','vaig']);
+    const words = text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(w => w.length > 3 && !stop.has(w));
+    const freq = {};
+    words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+    const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 5);
+    const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+    const summary = sentences.slice(0, 2).join(' ').trim() || text.slice(0, 200);
+    const firstWords = text.split(/\s+/).slice(0, 7).join(' ');
+    const title = firstWords.charAt(0).toUpperCase() + firstWords.slice(1);
+    return { title: title, tags: top.join(', '), summary: summary };
   }
 
   async processAudioBlob(blob) {
