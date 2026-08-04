@@ -156,18 +156,26 @@
           <h1 style="margin:0; font-size:32px; font-weight:800; line-height:1.15;">{{det.title}}</h1>
           <p style="margin:0; color:#5B7A99; font-size:15px; font-weight:600;">{{det.author}} · Publicat el {{det.date}} · {{det.dur}}</p>
           <p style="margin:0; font-size:16px; line-height:1.6;">{{det.desc}}</p>
-          <div style="background:#0E2A4E; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:12px;">
-            <div style="display:flex; align-items:center; gap:14px;">
-              <button onClick="{{det.play}}" style="background:#F5B41E; color:#0E2A4E; border:none; cursor:pointer; width:52px; height:52px; border-radius:50%; font-size:14px; font-weight:800; flex-shrink:0;" aria-label="Reprodueix o pausa">{{det.playIcon}}</button>
-              <div style="flex:1;">
-                <div style="height:8px; border-radius:999px; background:#2A4A72; overflow:hidden;">
-                  <div style="height:100%; width:{{det.progressPct}}; background:linear-gradient(90deg, #2B9FE3, #F5B41E); border-radius:999px;"></div>
-                </div>
-                <p style="margin:6px 0 0; color:#8FBEE0; font-size:12px;">{{det.playerStatus}}</p>
-              </div>
+          <sc-if value="{{det.hasAudio}}" hint-placeholder-val="{{false}}">
+            <div style="background:#0E2A4E; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+              <audio controls src="{{det.audioData}}" style="width:100%;"></audio>
+              <p style="margin:0; color:#8FBEE0; font-size:12px;">Gravació enregistrada directament des del navegador.</p>
             </div>
-            <p style="margin:0; color:#5B7A99; font-size:11px;">Reproductor de demostració — al prototip els arxius d'àudio no estan connectats.</p>
-          </div>
+          </sc-if>
+          <sc-if value="{{det.noAudio}}" hint-placeholder-val="{{true}}">
+            <div style="background:#0E2A4E; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <button onClick="{{det.play}}" style="background:#F5B41E; color:#0E2A4E; border:none; cursor:pointer; width:52px; height:52px; border-radius:50%; font-size:14px; font-weight:800; flex-shrink:0;" aria-label="Reprodueix o pausa">{{det.playIcon}}</button>
+                <div style="flex:1;">
+                  <div style="height:8px; border-radius:999px; background:#2A4A72; overflow:hidden;">
+                    <div style="height:100%; width:{{det.progressPct}}; background:linear-gradient(90deg, #2B9FE3, #F5B41E); border-radius:999px;"></div>
+                  </div>
+                  <p style="margin:6px 0 0; color:#8FBEE0; font-size:12px;">{{det.playerStatus}}</p>
+                </div>
+              </div>
+              <p style="margin:0; color:#5B7A99; font-size:11px;">Reproductor de demostració — al prototip els arxius d'àudio no estan connectats.</p>
+            </div>
+          </sc-if>
         </div>
       </div>
       <sc-if value="{{hasRelated}}" hint-placeholder-val="{{false}}">
@@ -235,6 +243,29 @@
               <span style="color:#C0392B; font-size:13px; font-weight:600;" role="alert">{{form.fileError}}</span>
             </sc-if>
           </label>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="flex:1; height:1px; background:#C6DBEC;"></div>
+            <span style="font-size:12px; color:#8AA5BF; font-weight:700; letter-spacing:0.5px;">O BÉ, GRAVA'L ARA</span>
+            <div style="flex:1; height:1px; background:#C6DBEC;"></div>
+          </div>
+          <div style="background:#F4FAFE; border:1px dashed #2B9FE3; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <sc-if value="{{isNotRecording}}" hint-placeholder-val="{{true}}">
+                <button type="button" onClick="{{startRecording}}" style="background:#2B9FE3; color:#fff; border:none; cursor:pointer; padding:10px 18px; border-radius:999px; font-size:14px; font-weight:700;">🎙️ Inicia la gravació</button>
+              </sc-if>
+              <sc-if value="{{isRecording}}" hint-placeholder-val="{{false}}">
+                <button type="button" onClick="{{stopRecording}}" style="background:#C0392B; color:#fff; border:none; cursor:pointer; padding:10px 18px; border-radius:999px; font-size:14px; font-weight:700;">⏹ Atura ({{recordTimeLabel}})</button>
+              </sc-if>
+              <sc-if value="{{hasRecording}}" hint-placeholder-val="{{false}}">
+                <audio controls src="{{recordedUrl}}" style="height:36px; max-width:260px;"></audio>
+                <button type="button" onClick="{{discardRecording}}" style="background:none; border:1px solid #C6DBEC; color:#5B7A99; cursor:pointer; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600;">Torna a gravar</button>
+              </sc-if>
+            </div>
+            <sc-if value="{{recordErr}}" hint-placeholder-val="{{false}}">
+              <p style="margin:0; color:#C0392B; font-size:13px; font-weight:600;" role="alert">{{recordError}}</p>
+            </sc-if>
+            <p style="margin:0; color:#8AA5BF; font-size:12px;">La gravació es fa amb el micròfon del navegador; cal donar permís d'accés.</p>
+          </div>
           <label style="display:flex; flex-direction:column; gap:6px; font-size:14px; font-weight:700;">Imatge de portada (opcional)
             <input type="file" accept="image/*" onChange="{{onCover}}" style="padding:10px; border-radius:10px; border:1px dashed #C6DBEC; background:#FAFCFE; font-size:14px;">
             <sc-if value="{{coverOk}}" hint-placeholder-val="{{false}}">
@@ -488,10 +519,14 @@ class Component extends DCLogic {
     editCat: '',
     playingId: null,
     progress: 0,
-    form: { title: '', desc: '', cat: '', author: '', tags: '', rights: false, fileName: '', fileError: '', coverName: '' },
+    form: { title: '', desc: '', cat: '', author: '', tags: '', rights: false, fileName: '', fileError: '', coverName: '', audioData: '' },
     formError: '',
     sent: false,
     toast: '',
+    recording: false,
+    recordSeconds: 0,
+    recordedUrl: '',
+    recordError: '',
     editorOpen: false,
     editorAuth: false,
     editorAuthPass: '',
@@ -537,7 +572,11 @@ class Component extends DCLogic {
     }, 350);
   }
 
-  componentWillUnmount() { clearInterval(this.timer); }
+  componentWillUnmount() {
+    clearInterval(this.timer);
+    clearInterval(this.recordTimer);
+    if (this.mediaStream) this.mediaStream.getTracks().forEach(t => t.stop());
+  }
 
   load() {
     try {
@@ -647,6 +686,8 @@ class Component extends DCLogic {
     let det = null, related = [];
     if (detRaw) {
       det = this.vm(detRaw);
+      det.hasAudio = !!detRaw.audioData;
+      det.noAudio = !detRaw.audioData;
       const playing = s.playingId === detRaw.id;
       det.playIcon = playing ? '❚❚' : '▶';
       det.progressPct = playing ? s.progress.toFixed(1) + '%' : '0%';
@@ -722,6 +763,17 @@ class Component extends DCLogic {
       fileOk: !!s.form.fileName && !s.form.fileError,
       fileErr: !!s.form.fileError,
       coverOk: !!s.form.coverName,
+      recording: s.recording,
+      isRecording: s.recording,
+      isNotRecording: !s.recording,
+      hasRecording: !!s.recordedUrl,
+      recordedUrl: s.recordedUrl,
+      recordTimeLabel: this.formatRecordTime(s.recordSeconds),
+      recordErr: !!s.recordError,
+      recordError: s.recordError,
+      startRecording: () => this.startRecording(),
+      stopRecording: () => this.stopRecording(),
+      discardRecording: () => this.discardRecording(),
       formErr: !!s.formError,
       formError: s.formError,
       onTitle: e => this.setForm('title', e.target.value),
@@ -738,7 +790,7 @@ class Component extends DCLogic {
         } else if (f.size > maxMB * 1024 * 1024) {
           this.setState(st => ({ form: Object.assign({}, st.form, { fileName: '', fileError: 'L\'arxiu supera el límit de ' + maxMB + ' MB.' }) }));
         } else {
-          this.setState(st => ({ form: Object.assign({}, st.form, { fileName: f.name, fileError: '' }) }));
+          this.setState(st => ({ form: Object.assign({}, st.form, { fileName: f.name, fileError: '', audioData: '' }), recordedUrl: '' }));
         }
       },
       onCover: e => {
@@ -750,21 +802,29 @@ class Component extends DCLogic {
         if (!f.title.trim() || !f.desc.trim() || !f.cat || !f.author.trim()) {
           this.setState({ formError: 'Omple tots els camps obligatoris (marcats amb *).' }); return;
         }
-        if (!f.fileName) { this.setState({ formError: 'Cal adjuntar un arxiu MP3, MP4 o WAV.' }); return; }
+        if (!f.fileName) { this.setState({ formError: 'Cal adjuntar un arxiu d\'àudio o gravar-lo directament.' }); return; }
         if (!f.rights) { this.setState({ formError: 'Cal confirmar els drets i l\'autorització abans d\'enviar.' }); return; }
         const d = this.load();
         const now = new Date();
         d.added.push({
           id: 'u' + Date.now(),
           title: f.title.trim(), desc: f.desc.trim(), cat: f.cat, author: f.author.trim(),
-          tags: f.tags, fileName: f.fileName, coverName: f.coverName,
+          tags: f.tags, fileName: f.fileName, coverName: f.coverName, audioData: f.audioData || '',
           date: String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear(),
           dur: '—', featured: false, status: 'pendent'
         });
         this.save(d);
         this.setState({ sent: true });
       },
-      resetForm: () => this.setState({ sent: false, form: { title: '', desc: '', cat: '', author: '', tags: '', rights: false, fileName: '', fileError: '', coverName: '' }, formError: '' }),
+      resetForm: () => this.setState({
+        sent: false,
+        form: { title: '', desc: '', cat: '', author: '', tags: '', rights: false, fileName: '', fileError: '', coverName: '', audioData: '' },
+        formError: '',
+        recording: false,
+        recordSeconds: 0,
+        recordedUrl: '',
+        recordError: ''
+      }),
 
       // categories
       catCards: catCards,
@@ -870,6 +930,62 @@ class Component extends DCLogic {
       this.setState({ editorLoading: false });
       this.showToast('Error de conexión: ' + error.message);
     }
+  }
+
+  formatRecordTime(total) {
+    const m = Math.floor(total / 60);
+    const sec = total % 60;
+    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+  }
+
+  startRecording() {
+    this.setState({ recordError: '' });
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+      this.setState({ recordError: 'Aquest navegador no permet gravar àudio.' });
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      this.mediaStream = stream;
+      this.recordedChunks = [];
+      const mr = new MediaRecorder(stream);
+      this.mediaRecorder = mr;
+      mr.ondataavailable = e => { if (e.data && e.data.size > 0) this.recordedChunks.push(e.data); };
+      mr.onstop = () => {
+        clearInterval(this.recordTimer);
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(this.recordedChunks, { type: mr.mimeType || 'audio/webm' });
+        const reader = new FileReader();
+        reader.onload = () => {
+          this.setState(s => ({
+            recording: false,
+            recordedUrl: reader.result,
+            form: Object.assign({}, s.form, { fileName: 'Gravació del navegador', fileError: '', audioData: reader.result })
+          }));
+        };
+        reader.readAsDataURL(blob);
+      };
+      mr.start();
+      this.setState({ recording: true, recordSeconds: 0, recordedUrl: '' });
+      this.recordTimer = setInterval(() => {
+        this.setState(s => ({ recordSeconds: s.recordSeconds + 1 }));
+      }, 1000);
+    }).catch(err => {
+      this.setState({ recordError: 'No s\'ha pogut accedir al micròfon: ' + err.message });
+    });
+  }
+
+  stopRecording() {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+  }
+
+  discardRecording() {
+    this.setState(s => ({
+      recordedUrl: '',
+      recordSeconds: 0,
+      form: Object.assign({}, s.form, { fileName: '', audioData: '' })
+    }));
   }
 }
 </script>
