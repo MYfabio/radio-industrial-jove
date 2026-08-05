@@ -1,6 +1,7 @@
 /**
- * Efectos de sonido: tots es sintetitzen amb Web Audio API (cap dependència
- * d'arxius externs). Cada efecte es connecta a l'altaveu i a la mescla que es grava.
+ * Efectos de sonido: aplaudiments, campana, tatxan i transició fan servir
+ * arxius reals servits des de /sounds (autohospedats, sense dependre de cap
+ * servei extern). La resta es sintetitzen amb Web Audio API.
  */
 export type EffectId =
   | "aplausos"
@@ -26,6 +27,27 @@ export const EFFECTS: EffectDef[] = [
   { id: "tambor", label: "Timbal", emoji: "🥁" },
   { id: "whoosh", label: "Transició", emoji: "🌪️" },
 ];
+
+/** Efectes amb arxiu d'àudio real, autohospedat a /public. */
+const FILE_EFFECTS: Partial<Record<EffectId, string>> = {
+  aplausos: "/aplausos.mp3",
+  campana: "/campana.mp3",
+  tada: "/tada.mp3",
+  whoosh: "/whoosh.mp3",
+};
+
+const bufferCache = new Map<string, Promise<AudioBuffer>>();
+
+function loadBuffer(ctx: AudioContext, url: string) {
+  let promise = bufferCache.get(url);
+  if (!promise) {
+    promise = fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((data) => ctx.decodeAudioData(data));
+    bufferCache.set(url, promise);
+  }
+  return promise;
+}
 
 function noiseBuffer(ctx: BaseAudioContext, seconds: number) {
   const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * seconds), ctx.sampleRate);
@@ -78,6 +100,28 @@ export function playEffect(
   const out = ctx.createGain();
   out.gain.value = Math.max(0.0001, Math.min(1, opts.volume ?? 0.9));
   destinations.forEach((d) => out.connect(d));
+  const now = ctx.currentTime;
+
+  const fileUrl = FILE_EFFECTS[id];
+  if (fileUrl) {
+    void loadBuffer(ctx, fileUrl)
+      .then((buffer) => {
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        src.connect(out);
+        const start = ctx.currentTime;
+        applyEnvelope(out, ctx, start, buffer.duration, opts);
+        src.start(start);
+      })
+      .catch(() => playSynth(ctx, id, out, opts));
+    return;
+  }
+
+  playSynth(ctx, id, out, opts);
+}
+
+/** Versions sintetitzades (reserva si l'arxiu no carrega, o efectes sense arxiu). */
+function playSynth(ctx: AudioContext, id: EffectId, out: GainNode, opts: PlayOptions) {
   const now = ctx.currentTime;
 
   if (id === "aplausos") {
@@ -175,7 +219,6 @@ export function playEffect(
   if (id === "tambor") {
     applyEnvelope(out, ctx, now, 0.62, opts);
     for (let hit = 0; hit < 3; hit++) {
-
       const t = now + hit * 0.16;
       const osc = ctx.createOscillator();
       osc.type = "sine";
