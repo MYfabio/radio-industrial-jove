@@ -30,10 +30,11 @@ export const EFFECTS: EffectDef[] = [
 
 /** Efectes amb arxiu d'àudio real, autohospedat a /public. */
 const FILE_EFFECTS: Partial<Record<EffectId, string>> = {
-  aplausos: "/aplausos.mp3",
-  campana: "/campana.mp3",
-  tada: "/tada.mp3",
-  whoosh: "/whoosh.mp3",
+  campana: "/freesound_community-bell-98033.mp3",
+  tada: "/freesound_community-tadaa-47995.mp3",
+  whoosh: "/freesound_community-paisaje-sonoro-uem-pisasdas-43442.mp3",
+  risa: "/artificiallyinspired-90s-sitcom-laugh-track-v2-353986.mp3",
+  pedo: "/apebble-fart-5-228245.mp3",
 };
 
 const bufferCache = new Map<string, Promise<AudioBuffer>>();
