@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * Edición con IA: transcribe la grabación y genera título, resumen,
- * capítulos y consejos de montaje para el pódcast del alumno.
+ * Edición con IA: Gemini escucha directamente el audio (transcripción +
+ * edición en una sola llamada) y genera título, resumen, capítulos y
+ * consejos de montaje para el pódcast del alumno.
  */
 export interface AiEditResult {
   transcript: string;
@@ -12,19 +13,31 @@ export interface AiEditResult {
   consejos: string[];
 }
 
-const SYSTEM = `Eres un editor de pódcast escolar. Recibes la transcripción de una grabación hecha por alumnos.
-Devuelve json con este formato exacto:
-{"titulo": string, "resumen": string, "capitulos": [{"tiempo": "mm:ss", "titulo": string}], "consejos": [string]}
-El título es corto y atractivo. El resumen tiene 2 o 3 frases. Los capítulos marcan las partes del programa (máximo 5).
-Los consejos son 3 recomendaciones sencillas y motivadoras para mejorar la próxima grabación, en lenguaje claro para alumnos.
+const PROMPT = `Ets un editor de pòdcast escolar. Escolta l'àudio adjunt (una gravació feta per un alumne) i respon NOMÉS amb un JSON amb aquest format exacte:
+{"transcript": string, "titulo": string, "resumen": string, "capitulos": [{"tiempo": "mm:ss", "titulo": string}], "consejos": [string]}
+
+- "transcript": transcripció completa i fidel del que se sent a l'àudio.
+- "titulo": un títol curt i atractiu per al pòdcast.
+- "resumen": 2 o 3 frases que resumeixin el contingut.
+- "capitulos": marquen les parts del programa (màxim 5), amb el temps aproximat on comencen.
+- "consejos": exactament 3 recomanacions senzilles i motivadores per millorar la pròxima gravació, en llenguatge clar per a alumnes.
+
+Si no se sent cap veu a l'àudio, retorna transcript buit, titulo "Gravació sense veu detectada", un resumen explicant-ho, capitulos buit, i consejos amb suggeriments per gravar millor (parlar més a prop del micròfon, gravar en un lloc silenciós, fer una prova curta abans).
+
 Escriu sempre en català.`;
+
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  return Buffer.from(buffer).toString("base64");
+}
 
 export const Route = createFileRoute("/api/ai-edit")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const key = process.env["LOVABLE_API_KEY"];
-        if (!key) return new Response("Falta LOVABLE_API_KEY", { status: 500 });
+        const key = process.env["GEMINI_API_KEY"];
+        if (!key) return new Response("Falta GEMINI_API_KEY", { status: 500 });
+        const model = process.env["GEMINI_MODEL"] || "gemini-flash-latest";
 
         const form = await request.formData();
         const file = form.get("audio");
@@ -32,69 +45,38 @@ export const Route = createFileRoute("/api/ai-edit")({
           return new Response("Falta el audio", { status: 400 });
         }
 
-        // 1) Transcripción
-        const sttForm = new FormData();
-        sttForm.append("model", "openai/gpt-4o-mini-transcribe");
-        sttForm.append("file", file, "podcast.wav");
+        const audioBase64 = await fileToBase64(file);
+        const mimeType = file.type || "audio/webm";
 
-        const sttRes = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
-          method: "POST",
-          headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "fetch" },
-          body: sttForm,
-        });
-
-        if (!sttRes.ok) {
-          const body = await sttRes.text();
-          console.error(`Transcripción falló [${sttRes.status}]: ${body}`);
-          return new Response(body, { status: sttRes.status });
-        }
-
-        const stt = (await sttRes.json()) as { text?: string };
-        const transcript = (stt.text ?? "").trim();
-
-        if (!transcript) {
-          return Response.json({
-            transcript: "",
-            titulo: "Gravació sense veu detectada",
-            resumen:
-              "No hem sentit cap veu en aquesta gravació. Acosta't al micròfon i torna-ho a provar.",
-            capitulos: [],
-            consejos: [
-              "Parla a uns 20 cm del micròfon.",
-              "Grava en un lloc silenciós.",
-              "Fes una prova curta abans del programa.",
-            ],
-          } satisfies AiEditResult);
-        }
-
-        // 2) Montaje asistido por IA
-        const chatRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Lovable-API-Key": key,
-            "X-Lovable-AIG-SDK": "fetch",
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: PROMPT },
+                    { inline_data: { mime_type: mimeType, data: audioBase64 } },
+                  ],
+                },
+              ],
+              generationConfig: { responseMimeType: "application/json" },
+            }),
           },
-          body: JSON.stringify({
-            model: "google/gemini-3.6-flash",
-            response_format: { type: "json_object" },
-            messages: [
-              { role: "system", content: SYSTEM },
-              { role: "user", content: `Transcripción del pódcast:\n\n${transcript}` },
-            ],
-          }),
-        });
+        );
 
-        if (!chatRes.ok) {
-          const body = await chatRes.text();
-          console.error(`Edición IA falló [${chatRes.status}]: ${body}`);
-          return new Response(body, { status: chatRes.status });
+        if (!geminiRes.ok) {
+          const body = await geminiRes.text();
+          console.error(`Edició IA amb Gemini ha fallat [${geminiRes.status}]: ${body}`);
+          return new Response(body, { status: geminiRes.status });
         }
 
-        const chat = (await chatRes.json()) as {
-          choices?: { message?: { content?: string } }[];
+        const data = (await geminiRes.json()) as {
+          candidates?: { content?: { parts?: { text?: string }[] } }[];
         };
-        const raw = chat.choices?.[0]?.message?.content ?? "{}";
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
 
         let parsed: Partial<AiEditResult> = {};
         try {
@@ -104,7 +86,7 @@ export const Route = createFileRoute("/api/ai-edit")({
         }
 
         return Response.json({
-          transcript,
+          transcript: parsed.transcript ?? "",
           titulo: parsed.titulo ?? "El meu pòdcast",
           resumen: parsed.resumen ?? "",
           capitulos: Array.isArray(parsed.capitulos) ? parsed.capitulos.slice(0, 5) : [],
