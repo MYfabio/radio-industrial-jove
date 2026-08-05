@@ -1,6 +1,7 @@
 /**
- * Edición automática: recorta silencios al principio y al final,
- * normaliza el volumen y aplica fundidos suaves. Devuelve un WAV.
+ * Edición automática: recorta silencios al principio, al final i també els
+ * silencis llargs que queden pel mig (per exemple si l'alumne dubta o para
+ * a pensar), normalitza el volum i aplica fosos suaus. Retorna un WAV.
  */
 export interface AutoEditResult {
   blob: Blob;
@@ -40,6 +41,58 @@ function encodeWav(channel: Float32Array, sampleRate: number): Blob {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
+/**
+ * Escurça els silencis llargs que queden pel mig de la gravació (per
+ * exemple una pausa de 3 segons perquè l'alumne dubta), deixant-hi només
+ * una pausa curta i natural. No toca els trams amb veu.
+ */
+function shortenInternalSilences(
+  mono: Float32Array,
+  sampleRate: number,
+  win: number,
+  threshold: number,
+): Float32Array {
+  const minPauseToShorten = Math.floor(sampleRate * 1.1); // pauses més curtes es deixen tal qual
+  const keepPause = Math.floor(sampleRate * 0.35); // quant de silenci es conserva
+  const length = mono.length;
+
+  const loud = (start: number) => {
+    let peak = 0;
+    for (let i = start; i < Math.min(start + win, length); i++) peak = Math.max(peak, Math.abs(mono[i] ?? 0));
+    return peak > threshold;
+  };
+
+  const chunks: Float32Array[] = [];
+  let i = 0;
+  let chunkStart = 0;
+  while (i < length) {
+    if (!loud(i)) {
+      let silenceEnd = i;
+      while (silenceEnd < length && !loud(silenceEnd)) silenceEnd += win;
+      const silenceLen = silenceEnd - i;
+      if (silenceLen >= minPauseToShorten) {
+        chunks.push(mono.subarray(chunkStart, i + keepPause));
+        chunkStart = silenceEnd;
+      }
+      i = silenceEnd;
+    } else {
+      i += win;
+    }
+  }
+  chunks.push(mono.subarray(chunkStart, length));
+
+  if (chunks.length <= 1) return mono;
+
+  const total = chunks.reduce((sum, c) => sum + c.length, 0);
+  const out = new Float32Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    out.set(c, offset);
+    offset += c.length;
+  }
+  return out;
+}
+
 export async function autoEdit(blob: Blob): Promise<AutoEditResult> {
   const ctx = new AudioContext();
   const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
@@ -74,7 +127,8 @@ export async function autoEdit(blob: Blob): Promise<AutoEditResult> {
     endIdx = length;
   }
 
-  const trimmed = mono.slice(startIdx, endIdx);
+  const edgeTrimmed = mono.slice(startIdx, endIdx);
+  const trimmed = shortenInternalSilences(edgeTrimmed, decoded.sampleRate, win, threshold);
 
   // Normalizado a -1 dBFS
   let peak = 0;
