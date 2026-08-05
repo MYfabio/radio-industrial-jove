@@ -1,20 +1,26 @@
-# Ràdio Industrial Jove — desplegament a Railway
+# Onda Radio Edu
 
-Web de la ràdio escolar de l'Institut Escola Industrial de Sabadell.
+diseña en html un radio para alumnos.
+La radio contempla un pista donde va biendo la onda que se va grabando
+Un boton que posa en gravavcio gran que es pot pulsar per para la gravacio facil ment.
 
-## Contingut
-- `index.html` — tota la web en un sol fitxer (autònom, sense dependències externes)
-- `package.json` — configuració perquè Railway serveixi la web
+This project was built with [Lovable](https://lovable.dev).
 
-## Com desplegar a Railway (pas a pas)
-1. Crea un compte a https://github.com i crea un repositori nou (botó "New repository"), per exemple `radio-industrial-jove`, públic.
-2. A la pàgina del repositori, clica "uploading an existing file" i arrossega-hi els 3 fitxers d'aquesta carpeta (`index.html`, `package.json`, `README.md`). Clica "Commit changes".
-3. Entra a https://railway.com i inicia sessió amb el teu compte de GitHub.
-4. Clica "New Project" → "Deploy from GitHub repo" → tria `radio-industrial-jove`.
-5. Espera que acabi el desplegament (1-2 minuts).
-6. Al servei, ves a "Settings" → "Networking" → clica "Generate Domain".
-7. Ja tens la web pública a l'adreça que et doni (acaba en `.up.railway.app`).
+## Build with Lovable
 
-## Notes
-- El panell docent (botó "Docents") té la contrasenya de demostració `docent2026`.
-- Els enviaments i aprovacions es guarden al navegador de cada visitant (localStorage): és un prototip, encara sense base de dades.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/52f8650e-2c40-46f2-8ac6-5ba271744099).
+
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+
+## Development
+
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+
+```sh
+git clone <this-repository-url>
+cd <repository-name>
+npm i
+npm run dev
+```

@@ -1,0 +1,178 @@
+/**
+ * Accés a la base de dades de pòdcasts allotjada a Railway Postgres.
+ * Tot (fitxa + àudio + caràtula) es desa aquí: no depèn de cap emmagatzematge extern.
+ */
+import postgres from "postgres";
+
+export type Sql = ReturnType<typeof postgres>;
+
+export function getSql(): Sql {
+  const url = process.env["RAILWAY_DATABASE_URL"];
+  if (!url) throw new Error("Falta la variable RAILWAY_DATABASE_URL.");
+  return postgres(url, {
+    ssl: { rejectUnauthorized: false },
+    connect_timeout: 10,
+    idle_timeout: 20,
+    max_lifetime: 60 * 30,
+  });
+}
+
+export async function ensureSchema(sql: Sql) {
+  await sql`
+    CREATE TABLE IF NOT EXISTS podcasts (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      "desc" TEXT,
+      cat TEXT,
+      author TEXT,
+      tags TEXT[],
+      audio_url TEXT,
+      transcript TEXT,
+      dur INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pendent',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_data BYTEA`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_mime TEXT`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover TEXT`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_data BYTEA`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_mime TEXT`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS template TEXT`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS teacher_note TEXT`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE podcasts ALTER COLUMN audio_url DROP NOT NULL`;
+}
+
+export interface PodcastRow {
+  id: number;
+  title: string;
+  desc: string | null;
+  cat: string | null;
+  author: string | null;
+  tags: string[] | null;
+  audio_url: string | null;
+  transcript: string | null;
+  dur: number;
+  status: string;
+  cover: string | null;
+  template: string | null;
+  teacher_note: string | null;
+  publish_at: string | null;
+  created_at: string;
+  has_cover_image?: boolean;
+}
+
+const LIST_COLUMNS = `id, title, "desc", cat, author, tags, audio_url, transcript,
+  dur, status, cover, template, teacher_note, publish_at, created_at,
+  (cover_data IS NOT NULL) AS has_cover_image`;
+
+export interface NewPodcast {
+  title: string;
+  desc: string | null;
+  cat: string | null;
+  author: string | null;
+  tags: string[];
+  transcript: string | null;
+  dur: number;
+  template: string | null;
+  cover: string | null;
+  audioBase64: string;
+  audioMime: string;
+  coverBase64: string | null;
+  coverMime: string | null;
+  publishAt: string | null;
+  origin: string;
+}
+
+function decode(base64: string) {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  return Buffer.from(bytes);
+}
+
+export async function createPodcast(sql: Sql, data: NewPodcast) {
+  await ensureSchema(sql);
+  const audio = decode(data.audioBase64);
+  const cover = data.coverBase64 ? decode(data.coverBase64) : null;
+
+  const [row] = await sql`
+    INSERT INTO podcasts (
+      title, "desc", cat, author, tags, transcript, dur, status,
+      template, cover, audio_data, audio_mime, cover_data, cover_mime, publish_at
+    ) VALUES (
+      ${data.title}, ${data.desc}, ${data.cat}, ${data.author}, ${data.tags},
+      ${data.transcript}, ${Math.round(data.dur || 0)}, 'pendent',
+      ${data.template}, ${data.cover}, ${audio}, ${data.audioMime},
+      ${cover}, ${data.coverMime}, ${data.publishAt}
+    )
+    RETURNING id
+  `;
+
+  const id = row!["id"] as number;
+  const audioUrl = `${data.origin.replace(/\/$/, "")}/api/public/audio/${id}`;
+  await sql`UPDATE podcasts SET audio_url = ${audioUrl} WHERE id = ${id}`;
+  return { id, audio_url: audioUrl };
+}
+
+/** Mur públic: només aprovats i amb la data de publicació ja arribada. */
+export async function listApproved(sql: Sql) {
+  await ensureSchema(sql);
+  const rows = await sql.unsafe(`
+    SELECT ${LIST_COLUMNS} FROM podcasts
+    WHERE status = 'aprovat'
+      AND (publish_at IS NULL OR publish_at <= now())
+    ORDER BY COALESCE(publish_at, created_at) DESC
+    LIMIT 200
+  `);
+  return rows as unknown as PodcastRow[];
+}
+
+/** Panell del mestre: tot, del més nou al més vell. */
+export async function listAll(sql: Sql) {
+  await ensureSchema(sql);
+  const rows = await sql.unsafe(`
+    SELECT ${LIST_COLUMNS} FROM podcasts ORDER BY created_at DESC LIMIT 300
+  `);
+  return rows as unknown as PodcastRow[];
+}
+
+export async function reviewPodcast(
+  sql: Sql,
+  id: number,
+  status: string,
+  teacherNote: string | null,
+  publishAt: string | null,
+) {
+  await ensureSchema(sql);
+  await sql`
+    UPDATE podcasts
+       SET status = ${status},
+           teacher_note = ${teacherNote},
+           publish_at = ${publishAt}
+     WHERE id = ${id}
+  `;
+  return { ok: true };
+}
+
+export async function getAudio(sql: Sql, id: number) {
+  const [row] = await sql`
+    SELECT audio_data, audio_mime, title FROM podcasts WHERE id = ${id}
+  `;
+  if (!row || !row["audio_data"]) return null;
+  return {
+    data: row["audio_data"] as Uint8Array,
+    mime: (row["audio_mime"] as string) || "audio/mpeg",
+    title: row["title"] as string,
+  };
+}
+
+export async function getCover(sql: Sql, id: number) {
+  const [row] = await sql`SELECT cover_data, cover_mime FROM podcasts WHERE id = ${id}`;
+  if (!row || !row["cover_data"]) return null;
+  return {
+    data: row["cover_data"] as Uint8Array,
+    mime: (row["cover_mime"] as string) || "image/jpeg",
+  };
+}
