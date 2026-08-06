@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Pause, Play, Square, Radio, Download, Wand2, Loader2, Sparkles, Upload, Trash2, ListChecks, Music, Users, FileAudio, Headphones, GraduationCap, Printer } from "lucide-react";
+import { Mic, Pause, Play, Square, Download, Wand2, Loader2, Sparkles, Upload, Trash2, ListChecks, Music, Users, FileAudio, Headphones, GraduationCap, Printer } from "lucide-react";
 import { Waveform } from "@/components/Waveform";
 import { LevelMeter } from "@/components/LevelMeter";
 import { PublishPodcast } from "@/components/PublishPodcast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
+import { Logo } from "@/components/Logo";
 
 import { Button } from "@/components/ui/button";
 import { EFFECTS, playEffect, type EffectId } from "@/lib/soundEffects";
@@ -415,9 +416,7 @@ function RadioStudio() {
       <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col">
         <header className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <Radio className="size-5" />
-            </span>
+            <Logo className="size-10 shrink-0" />
             <div className="min-w-0">
               <h1 className="truncate text-xl font-bold tracking-tight">{SITE_NAME}</h1>
               <p className="truncate text-xs text-muted-foreground">
