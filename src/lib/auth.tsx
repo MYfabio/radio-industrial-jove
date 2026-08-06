@@ -1,10 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
+import { fetchMyProfile } from "./settings.functions";
+import type { Role } from "./settings.server";
 
 interface AuthState {
   user: User | null;
   session: Session | null;
+  role: Role | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -14,6 +17,7 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!session?.user) {
+      setRole(null);
+      return;
+    }
+    fetchMyProfile()
+      .then((profile) => setRole(profile.role as Role))
+      .catch(() => setRole(null));
+  }, [session?.user?.id]);
+
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -42,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, loading, signInWithGoogle, signOut }}
+      value={{ user: session?.user ?? null, session, role, loading, signInWithGoogle, signOut }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,4 +1,5 @@
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "../lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
@@ -34,7 +35,7 @@ function GoogleIcon() {
 }
 
 export function AuthButton() {
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, role, loading, signInWithGoogle, signOut } = useAuth();
 
   if (loading) {
     return <div className="size-8 shrink-0 animate-pulse rounded-full bg-secondary" />;
@@ -68,6 +69,13 @@ export function AuthButton() {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel className="max-w-48 truncate">{name}</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {role === "coordinador" && (
+          <DropdownMenuItem asChild>
+            <Link to="/coordinador">
+              <Settings className="size-4" /> Panell de coordinador
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={() => void signOut()}>
           <LogOut className="size-4" /> Surt
         </DropdownMenuItem>
