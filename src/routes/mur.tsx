@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
+import { Logo } from "@/components/Logo";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Radio, Clock, Tag, Search, Play } from "lucide-react";
-import { fetchApprovedPodcasts, type PodcastRow } from "@/lib/podcasts.functions";
+import { Clock, Tag, Search, Play, Share2, Check, Lock } from "lucide-react";
+import { fetchApprovedPodcasts, type ApprovedPodcastsResult, type PodcastRow } from "@/lib/podcasts.functions";
 import { onPodcastsChanged } from "@/lib/podcastSync";
 import { SITE_NAME } from "@/lib/siteConfig";
+import { useAuth } from "@/lib/auth";
 import {
   Dialog,
   DialogContent,
@@ -136,7 +138,44 @@ function Poster({ p, onOpen }: { p: PodcastRow; onOpen: () => void }) {
   );
 }
 
-function DetailDialog({ p, onClose }: { p: PodcastRow | null; onClose: () => void }) {
+function ShareButton({ id }: { id: number }) {
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    const url = `${window.location.origin}/mur?p=${id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ url });
+        return;
+      } catch {
+        // L'usuari ha cancel·lat o el navegador no ho ha pogut fer: fem servir el porta-retalls.
+      }
+    }
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={() => void share()}
+      className="mt-4 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-semibold hover:bg-secondary"
+    >
+      {copied ? <Check className="size-4 text-accent" /> : <Share2 className="size-4" />}
+      {copied ? "Enllaç copiat!" : "Compartir"}
+    </button>
+  );
+}
+
+function DetailDialog({
+  p,
+  canShare,
+  onClose,
+}: {
+  p: PodcastRow | null;
+  canShare: boolean;
+  onClose: () => void;
+}) {
   if (!p) return null;
   const cat = p.cat || "Altres";
   const color = colorFor(cat);
@@ -176,6 +215,8 @@ function DetailDialog({ p, onClose }: { p: PodcastRow | null; onClose: () => voi
           {p.desc && <p className="mt-3 text-sm leading-relaxed">{p.desc}</p>}
 
           <audio controls preload="none" src={`/api/public/audio/${p.id}`} className="mt-4 w-full" />
+
+          {canShare && <ShareButton id={p.id} />}
 
           {p.tags && p.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5">
@@ -230,15 +271,25 @@ function Row({
 }
 
 function Wall() {
-  const { data } = useSuspenseQuery(wallQuery);
+  const { data: result } = useSuspenseQuery(wallQuery);
   const qc = useQueryClient();
+  const { user, loading: authLoading } = useAuth();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<PodcastRow | null>(null);
+  const data = result.items;
 
   useEffect(
     () => onPodcastsChanged(() => void qc.invalidateQueries({ queryKey: ["podcasts"] })),
     [qc],
   );
+
+  useEffect(() => {
+    if (result.locked) return;
+    const id = new URLSearchParams(window.location.search).get("p");
+    if (!id) return;
+    const match = data.find((p) => p.id === Number(id));
+    if (match) setActive(match);
+  }, [result.locked, data]);
 
   const q = query.trim().toLowerCase();
   const filtered = q
@@ -266,13 +317,13 @@ function Wall() {
     <main className="studio-bg min-h-screen px-4 py-8 sm:px-6">
       <div className="mx-auto w-full max-w-6xl">
         <header className="mb-8 flex flex-wrap items-center gap-3">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-            <Radio className="size-6" />
-          </span>
+          <Logo className="size-12" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mur de la classe</h1>
             <p className="text-sm text-muted-foreground">
-              {data.length} pòdcast{data.length === 1 ? "" : "s"} aprovats i publicats.
+              {result.locked
+                ? "Mur privat del centre."
+                : `${data.length} pòdcast${data.length === 1 ? "" : "s"} aprovats i publicats.`}
             </p>
           </div>
           <span className="ml-auto flex items-center gap-2">
@@ -287,36 +338,55 @@ function Wall() {
           </span>
         </header>
 
-        <div className="relative mb-8 max-w-md">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cerca per títol, autor o etiqueta…"
-            aria-label="Cerca pòdcasts"
-            className="w-full rounded-full border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none ring-accent focus:ring-2"
-          />
-        </div>
+        {result.locked ? (
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border p-10 text-center">
+            <Lock className="size-8 text-muted-foreground" />
+            <div>
+              <p className="font-semibold">Aquest mur és privat</p>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                {authLoading
+                  ? "Comprovant la sessió..."
+                  : user
+                    ? `El teu compte no pertany al domini @${result.allowedDomain} del centre.`
+                    : `Inicia sessió amb el compte de Google del centre (@${result.allowedDomain}) per veure'l.`}
+              </p>
+            </div>
+            {!user && <AuthButton />}
+          </div>
+        ) : (
+          <>
+            <div className="relative mb-8 max-w-md">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cerca per títol, autor o etiqueta…"
+                aria-label="Cerca pòdcasts"
+                className="w-full rounded-full border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none ring-accent focus:ring-2"
+              />
+            </div>
 
-        {data.length === 0 && (
-          <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-            Encara no hi ha cap pòdcast aprovat. Grava'n un i demana al mestre que el revisi!
-          </p>
+            {data.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
+                Encara no hi ha cap pòdcast aprovat. Grava'n un i demana al mestre que el revisi!
+              </p>
+            )}
+
+            {data.length > 0 && filtered.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
+                Cap pòdcast coincideix amb «{query}».
+              </p>
+            )}
+
+            {groups.map((g) => (
+              <Row key={g.label} label={g.label} color={g.color} items={g.items} onOpen={setActive} />
+            ))}
+          </>
         )}
-
-        {data.length > 0 && filtered.length === 0 && (
-          <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-            Cap pòdcast coincideix amb «{query}».
-          </p>
-        )}
-
-        {groups.map((g) => (
-          <Row key={g.label} label={g.label} color={g.color} items={g.items} onOpen={setActive} />
-        ))}
       </div>
 
-      <DetailDialog p={active} onClose={() => setActive(null)} />
+      <DetailDialog p={active} canShare={result.allowExternalSharing} onClose={() => setActive(null)} />
     </main>
   );
 }
