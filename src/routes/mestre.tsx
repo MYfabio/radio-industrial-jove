@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AuthButton } from "@/components/AuthButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fetchAllPodcasts, reviewPodcastFn, type PodcastRow } from "@/lib/podcasts.functions";
+import { SITE_NAME } from "@/lib/siteConfig";
 import { notifyPodcastsChanged } from "@/lib/podcastSync";
 
 
@@ -20,7 +22,7 @@ export const Route = createFileRoute("/mestre")({
         content:
           "Escolta els pòdcasts pendents, deixa un comentari privat per a l'alumne i decideix quan surten al mur.",
       },
-      { property: "og:title", content: "Panell del mestre — Ràdio Escolar" },
+      { property: "og:title", content: `Panell del mestre — ${SITE_NAME}` },
       {
         property: "og:description",
         content: "Revisa, comenta i programa la publicació dels pòdcasts de la classe.",
@@ -176,8 +178,9 @@ function TeacherPanel() {
               Escolta, comenta i decideix quan surt cada pòdcast al mur.
             </p>
           </div>
-          <span className="ml-auto">
+          <span className="ml-auto flex items-center gap-2">
             <ThemeToggle />
+            <AuthButton />
           </span>
           <Link
             to="/mur"
