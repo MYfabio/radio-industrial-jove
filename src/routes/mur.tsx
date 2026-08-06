@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AuthButton } from "@/components/AuthButton";
 import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Radio, Clock, Tag, Search, Play } from "lucide-react";
@@ -276,6 +277,7 @@ function Wall() {
           </div>
           <span className="ml-auto flex items-center gap-2">
             <ThemeToggle />
+            <AuthButton />
             <Link
               to="/"
               className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
