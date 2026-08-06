@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Pause, Play, Square, Radio, Download, Wand2, Loader2, Sparkles, Upload, Trash2, ListChecks, Music, Users, FileAudio, Headphones, GraduationCap } from "lucide-react";
+import { Mic, Pause, Play, Square, Radio, Download, Wand2, Loader2, Sparkles, Upload, Trash2, ListChecks, Music, Users, FileAudio, Headphones, GraduationCap, Printer } from "lucide-react";
 import { Waveform } from "@/components/Waveform";
 import { LevelMeter } from "@/components/LevelMeter";
 import { PublishPodcast } from "@/components/PublishPodcast";
@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 import { Button } from "@/components/ui/button";
 import { EFFECTS, playEffect, type EffectId } from "@/lib/soundEffects";
+import { SITE_NAME } from "@/lib/siteConfig";
 import { autoEdit, type AutoEditResult } from "@/lib/autoEdit";
 import { BG_TRACKS, startBackground, type BgHandle } from "@/lib/bgMusic";
 import { encodeMp3, safeFileName } from "@/lib/mp3";
@@ -20,6 +21,7 @@ import {
   type CustomSound,
 } from "@/lib/customSounds";
 import { TEMPLATES, type PodcastTemplate } from "@/lib/podcastTemplates";
+import { printTemplateGuide } from "@/lib/printTemplate";
 import type { AiEditResult } from "@/routes/api/ai-edit";
 
 
@@ -28,13 +30,13 @@ import type { AiEditResult } from "@/routes/api/ai-edit";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Ràdio Escolar — Grava el teu pòdcast amb ona i efectes" },
+      { title: `${SITE_NAME} — Grava el teu pòdcast amb ona i efectes` },
       {
         name: "description",
         content:
           "Estudi de ràdio per a alumnes: grava la teva veu, mira l'ona en directe, llança aplaudiments i efectes, i edita el pòdcast automàticament.",
       },
-      { property: "og:title", content: "Ràdio Escolar — Estudi de pòdcast" },
+      { property: "og:title", content: `${SITE_NAME} — Estudi de pòdcast` },
       {
         property: "og:description",
         content: "Grava pòdcast amb ona en directe, botons d'efectes i edició automàtica.",
@@ -381,7 +383,7 @@ function RadioStudio() {
 
   /** La versió que es publica i s'exporta: l'editada si existeix, si no l'original. */
   const finalBlob = () => edited?.blob ?? blobRef.current;
-  const finalTitle = () => ai?.titulo || template?.nombre || "Ràdio Escolar";
+  const finalTitle = () => ai?.titulo || template?.nombre || SITE_NAME;
 
   const exportMp3 = async () => {
     const blob = finalBlob();
@@ -391,7 +393,7 @@ function RadioStudio() {
     try {
       const mp3 = await encodeMp3(blob, {
         title: finalTitle(),
-        artist: "Ràdio Escolar",
+        artist: SITE_NAME,
         album: template?.nombre ?? "Pòdcasts de classe",
         comment: ai?.resumen ?? "",
       });
@@ -416,7 +418,7 @@ function RadioStudio() {
               <Radio className="size-5" />
             </span>
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-bold tracking-tight">Ràdio Escolar</h1>
+              <h1 className="truncate text-xl font-bold tracking-tight">{SITE_NAME}</h1>
               <p className="truncate text-xs text-muted-foreground">
                 Grava el teu pòdcast, afegeix-hi efectes i edita amb un clic.
               </p>
@@ -489,8 +491,17 @@ function RadioStudio() {
 
             {template && (
               <section className="space-y-3 rounded-2xl border border-accent/40 bg-accent/10 p-4">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">
-                  <ListChecks className="size-4" /> Guia de {template.nombre}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">
+                    <ListChecks className="size-4" /> Guia de {template.nombre}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => printTemplateGuide(template)}
+                    className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-card px-2.5 py-1 text-xs font-semibold text-accent transition-transform hover:scale-105 active:scale-95"
+                  >
+                    <Printer className="size-3.5" /> PDF
+                  </button>
                 </div>
 
                 <div>
@@ -1008,4 +1019,3 @@ function RadioStudio() {
     </main>
   );
 }
-
