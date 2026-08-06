@@ -5,6 +5,7 @@ import { Waveform } from "@/components/Waveform";
 import { LevelMeter } from "@/components/LevelMeter";
 import { PublishPodcast } from "@/components/PublishPodcast";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AuthButton } from "@/components/AuthButton";
 
 import { Button } from "@/components/ui/button";
 import { EFFECTS, playEffect, type EffectId } from "@/lib/soundEffects";
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Estudi de ràdio per a alumnes: grava la teva veu, mira l'ona en directe, llança aplaudiments i efectes, i edita el pòdcast automàticament.",
+          "Estudi de ràdio per a alumnes: grava la teva veu, mira l'ona en directe, llaça aplaudiments i efectes, i edita el pòdcast automàticament.",
       },
       { property: "og:title", content: `${SITE_NAME} — Estudi de pòdcast` },
       {
@@ -426,6 +427,7 @@ function RadioStudio() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <AuthButton />
             <Link
               to="/mur"
               className="hidden rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary sm:inline-flex"
