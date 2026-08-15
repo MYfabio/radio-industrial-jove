@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
-import { useSuspenseQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, Tag, Search, Play, Share2, Check, Lock } from "lucide-react";
+import { Clock, Tag, Search, Play, Share2, Check, Lock, Heart } from "lucide-react";
 import { fetchApprovedPodcasts, type ApprovedPodcastsResult, type PodcastRow } from "@/lib/podcasts.functions";
+import { fetchMyFavoriteIds, toggleFavoriteFn } from "@/lib/favorites.functions";
 import { onPodcastsChanged } from "@/lib/podcastSync";
 import { SITE_NAME } from "@/lib/siteConfig";
 import { useAuth } from "@/lib/auth";
@@ -89,52 +90,73 @@ function formatTime(s: number) {
   return `${String(m).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
-function Poster({ p, onOpen }: { p: PodcastRow; onOpen: () => void }) {
+function Poster({
+  p,
+  onOpen,
+  favorited,
+  onToggleFavorite,
+}: {
+  p: PodcastRow;
+  onOpen: () => void;
+  favorited?: boolean | undefined;
+  onToggleFavorite?: (() => void) | undefined;
+}) {
   const cat = p.cat || "Altres";
   const color = colorFor(cat);
   return (
-    <button
-      onClick={onOpen}
-      className="group w-48 shrink-0 snap-start text-left sm:w-60"
-      aria-label={`Obre ${p.title}`}
-    >
-      <div
-        className="relative aspect-video overflow-hidden rounded-2xl shadow-md transition-transform duration-200 group-hover:scale-[1.04] group-hover:shadow-2xl"
-        style={
-          p.has_cover_image
-            ? undefined
-            : { background: `linear-gradient(135deg, ${color}, #0E2A4E)` }
-        }
-      >
-        {p.has_cover_image ? (
-          <img
-            src={`/api/public/cover/${p.id}`}
-            alt=""
-            loading="lazy"
-            className="size-full object-cover transition-transform duration-200 group-hover:scale-110"
-          />
-        ) : (
-          <span className="absolute inset-0 flex items-center justify-center text-3xl font-extrabold tracking-widest text-white/90 sm:text-4xl">
-            {p.cover && /\p{Emoji}/u.test(p.cover) ? p.cover : initialsFor(p.title)}
-          </span>
-        )}
-        <span
-          className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow"
-          style={{ background: color }}
+    <div className="group relative w-48 shrink-0 snap-start sm:w-60">
+      <button onClick={onOpen} className="block w-full text-left" aria-label={`Obre ${p.title}`}>
+        <div
+          className="relative aspect-video overflow-hidden rounded-2xl shadow-md transition-transform duration-200 group-hover:scale-[1.04] group-hover:shadow-2xl"
+          style={
+            p.has_cover_image
+              ? undefined
+              : { background: `linear-gradient(135deg, ${color}, #0E2A4E)` }
+          }
         >
-          {cat}
-        </span>
-        <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity duration-200 group-hover:bg-black/30 group-hover:opacity-100">
-          <span className="flex size-14 items-center justify-center rounded-full bg-white/90 text-black shadow-lg">
-            <Play className="size-6 translate-x-0.5" fill="currentColor" />
+          {p.has_cover_image ? (
+            <img
+              src={`/api/public/cover/${p.id}`}
+              alt=""
+              loading="lazy"
+              className="size-full object-cover transition-transform duration-200 group-hover:scale-110"
+            />
+          ) : (
+            <span className="absolute inset-0 flex items-center justify-center text-3xl font-extrabold tracking-widest text-white/90 sm:text-4xl">
+              {p.cover && /\p{Emoji}/u.test(p.cover) ? p.cover : initialsFor(p.title)}
+            </span>
+          )}
+          <span
+            className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow"
+            style={{ background: color }}
+          >
+            {cat}
           </span>
-        </span>
-      </div>
+          <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity duration-200 group-hover:bg-black/30 group-hover:opacity-100">
+            <span className="flex size-14 items-center justify-center rounded-full bg-white/90 text-black shadow-lg">
+              <Play className="size-6 translate-x-0.5" fill="currentColor" />
+            </span>
+          </span>
+        </div>
+      </button>
+      {onToggleFavorite && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          aria-label={favorited ? "Treure dels preferits" : "Afegir als preferits"}
+          aria-pressed={favorited}
+          className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur transition-transform hover:scale-110"
+        >
+          <Heart className={`size-3.5 ${favorited ? "fill-current text-red-400" : ""}`} />
+        </button>
+      )}
       <h3 className="mt-1.5 truncate text-sm font-bold leading-tight">{p.title}</h3>
       <p className="truncate text-xs text-muted-foreground">
         {p.author || "Anònim"} · {formatTime(p.dur)}
       </p>
-    </button>
+    </div>
   );
 }
 
@@ -159,7 +181,7 @@ function ShareButton({ id }: { id: number }) {
   return (
     <button
       onClick={() => void share()}
-      className="mt-4 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-semibold hover:bg-secondary"
+      className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-semibold hover:bg-secondary"
     >
       {copied ? <Check className="size-4 text-accent" /> : <Share2 className="size-4" />}
       {copied ? "Enllaç copiat!" : "Compartir"}
@@ -170,10 +192,14 @@ function ShareButton({ id }: { id: number }) {
 function DetailDialog({
   p,
   canShare,
+  favorited,
+  onToggleFavorite,
   onClose,
 }: {
   p: PodcastRow | null;
   canShare: boolean;
+  favorited?: boolean | undefined;
+  onToggleFavorite?: (() => void) | undefined;
   onClose: () => void;
 }) {
   if (!p) return null;
@@ -216,7 +242,23 @@ function DetailDialog({
 
           <audio controls preload="none" src={`/api/public/audio/${p.id}`} className="mt-4 w-full" />
 
-          {canShare && <ShareButton id={p.id} />}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {onToggleFavorite && (
+              <button
+                onClick={onToggleFavorite}
+                aria-pressed={favorited}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
+                  favorited
+                    ? "border-red-400/50 bg-red-400/10 text-red-400"
+                    : "border-border hover:bg-secondary"
+                }`}
+              >
+                <Heart className={`size-4 ${favorited ? "fill-current" : ""}`} />
+                {favorited ? "Als preferits" : "Preferit"}
+              </button>
+            )}
+            {canShare && <ShareButton id={p.id} />}
+          </div>
 
           {p.tags && p.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5">
@@ -248,11 +290,15 @@ function Row({
   color,
   items,
   onOpen,
+  favoriteIds,
+  onToggleFavorite,
 }: {
   label: string;
   color: string;
   items: PodcastRow[];
   onOpen: (p: PodcastRow) => void;
+  favoriteIds: Set<number> | null;
+  onToggleFavorite: ((id: number) => void) | null;
 }) {
   return (
     <section className="mb-6">
@@ -263,7 +309,13 @@ function Row({
       </h2>
       <div className="scrollbar-none -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-2">
         {items.map((p) => (
-          <Poster key={p.id} p={p} onOpen={() => onOpen(p)} />
+          <Poster
+            key={p.id}
+            p={p}
+            onOpen={() => onOpen(p)}
+            favorited={favoriteIds?.has(p.id)}
+            onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(p.id) : undefined}
+          />
         ))}
       </div>
     </section>
@@ -277,6 +329,22 @@ function Wall() {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<PodcastRow | null>(null);
   const data = result.items;
+
+  const { data: favoriteIdsList } = useQuery({
+    queryKey: ["favorites", "mine"],
+    queryFn: () => fetchMyFavoriteIds(),
+    enabled: !!user,
+  });
+  const favoriteIds = user ? new Set(favoriteIdsList ?? []) : null;
+
+  const toggleFavorite = (id: number) => {
+    const current = new Set(qc.getQueryData<number[]>(["favorites", "mine"]) ?? []);
+    const next = current.has(id) ? [...current].filter((x) => x !== id) : [...current, id];
+    qc.setQueryData(["favorites", "mine"], next);
+    void toggleFavoriteFn({ data: { podcastId: id } }).catch(() => {
+      void qc.invalidateQueries({ queryKey: ["favorites", "mine"] });
+    });
+  };
 
   useEffect(
     () => onPodcastsChanged(() => void qc.invalidateQueries({ queryKey: ["podcasts"] })),
@@ -380,13 +448,27 @@ function Wall() {
             )}
 
             {groups.map((g) => (
-              <Row key={g.label} label={g.label} color={g.color} items={g.items} onOpen={setActive} />
+              <Row
+                key={g.label}
+                label={g.label}
+                color={g.color}
+                items={g.items}
+                onOpen={setActive}
+                favoriteIds={favoriteIds}
+                onToggleFavorite={user ? toggleFavorite : null}
+              />
             ))}
           </>
         )}
       </div>
 
-      <DetailDialog p={active} canShare={result.allowExternalSharing} onClose={() => setActive(null)} />
+      <DetailDialog
+        p={active}
+        canShare={result.allowExternalSharing}
+        favorited={active ? favoriteIds?.has(active.id) : undefined}
+        onToggleFavorite={user && active ? () => toggleFavorite(active.id) : undefined}
+        onClose={() => setActive(null)}
+      />
     </main>
   );
 }
