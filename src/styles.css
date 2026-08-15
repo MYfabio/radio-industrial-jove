@@ -123,6 +123,25 @@
   }
 }
 
+@utility col-resize-handle {
+  position: relative;
+  align-items: stretch;
+  justify-content: center;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+
+  & > span {
+    width: 1px;
+    background: var(--border);
+    transition: background-color 0.15s ease;
+  }
+  &:hover > span,
+  &:active > span {
+    background: var(--accent);
+  }
+}
+
 
 .dark {
   --background: oklch(0.16 0.03 265);

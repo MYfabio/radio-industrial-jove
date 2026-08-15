@@ -89,6 +89,56 @@ function RadioStudio() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bufferCache = useRef<Map<string, AudioBuffer>>(new Map());
 
+  const COL1_DEFAULT = 300;
+  const COL3_DEFAULT = 360;
+  const [col1Width, setCol1Width] = useState(COL1_DEFAULT);
+  const [col3Width, setCol3Width] = useState(COL3_DEFAULT);
+  const dragging = useRef<"left" | "right" | null>(null);
+  const dragStart = useRef({ x: 0, width: 0 });
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("studioColWidths") ?? "null") as {
+        col1?: number;
+        col3?: number;
+      } | null;
+      if (typeof saved?.col1 === "number") setCol1Width(saved.col1);
+      if (typeof saved?.col3 === "number") setCol3Width(saved.col3);
+    } catch {
+      // Ignora una preferència desada malament.
+    }
+  }, []);
+
+  useEffect(() => {
+    const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+    const onMove = (e: PointerEvent) => {
+      if (!dragging.current) return;
+      const delta = e.clientX - dragStart.current.x;
+      if (dragging.current === "left") {
+        setCol1Width(clamp(dragStart.current.width + delta, 240, 460));
+      } else {
+        setCol3Width(clamp(dragStart.current.width - delta, 280, 560));
+      }
+    };
+    const onUp = () => {
+      if (!dragging.current) return;
+      dragging.current = null;
+      localStorage.setItem("studioColWidths", JSON.stringify({ col1: col1Width, col3: col3Width }));
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [col1Width, col3Width]);
+
+  const startDrag = (which: "left" | "right", width: number) => (e: React.PointerEvent) => {
+    dragging.current = which;
+    dragStart.current = { x: e.clientX, width };
+    e.preventDefault();
+  };
+
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const blobRef = useRef<Blob | null>(null);
@@ -457,7 +507,10 @@ function RadioStudio() {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2 xl:grid-cols-[300px_minmax(0,1fr)_360px]">
+        <div
+          className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2 xl:grid-cols-[var(--col1)_6px_minmax(0,1fr)_6px_var(--col3)]"
+          style={{ "--col1": `${col1Width}px`, "--col3": `${col3Width}px` } as React.CSSProperties}
+        >
           {/* ---------- Columna 1: plantilla i guia ---------- */}
           <div className="min-h-0 space-y-3 lg:overflow-y-auto lg:pr-1">
             <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -567,6 +620,17 @@ function RadioStudio() {
                 </div>
               </section>
             )}
+          </div>
+
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Canvia l'amplada de la primera columna"
+            onPointerDown={startDrag("left", col1Width)}
+            onDoubleClick={() => setCol1Width(COL1_DEFAULT)}
+            className="col-resize-handle hidden xl:flex"
+          >
+            <span />
           </div>
 
           {/* ---------- Columna 2: pista i botó de gravació ---------- */}
@@ -847,6 +911,17 @@ function RadioStudio() {
                 )}
               </div>
             </section>
+          </div>
+
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Canvia l'amplada de la tercera columna"
+            onPointerDown={startDrag("right", col3Width)}
+            onDoubleClick={() => setCol3Width(COL3_DEFAULT)}
+            className="col-resize-handle hidden xl:flex"
+          >
+            <span />
           </div>
 
           {/* ---------- Columna 3: edició, escolta i publicació ---------- */}
