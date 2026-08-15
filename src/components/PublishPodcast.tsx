@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
-import { Loader2, Send, CheckCircle2, ImagePlus, X } from "lucide-react";
+import { Loader2, Send, CheckCircle2, ImagePlus, X, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { publishPodcast } from "@/lib/publishPodcast";
+import { CANVA_COVER_TEMPLATE_URL } from "@/lib/siteConfig";
 
 const COVER_ICONS = ["🎙️", "📻", "📰", "🎧", "🌍", "⚽", "🔬", "🎭", "🐾", "🎵", "🍕", "🚀"];
 
@@ -132,6 +133,17 @@ export function PublishPodcast({
       <div className="rounded-2xl border border-border bg-secondary/30 p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Caràtula</p>
         <p className="mt-1 text-sm text-muted-foreground">Puja una foto o tria una icona per al mur.</p>
+        <a
+          href={CANVA_COVER_TEMPLATE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20"
+        >
+          <Palette className="size-3.5" /> Fes la caràtula amb la plantilla de Canva
+        </a>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Obre la plantilla, personalitza-la amb el teu títol, descarrega-la com a imatge (PNG o JPG) i puja-la aquí baix.
+        </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {coverPreview ? (
