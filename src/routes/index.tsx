@@ -14,14 +14,11 @@ import { SITE_NAME } from "@/lib/siteConfig";
 import { autoEdit, type AutoEditResult } from "@/lib/autoEdit";
 import { BG_TRACKS, startBackground, type BgHandle } from "@/lib/bgMusic";
 import { encodeMp3, safeFileName } from "@/lib/mp3";
-import {
-  deleteCustomSound,
-  listCustomSounds,
-  playBuffer,
-  randomEmoji,
-  saveCustomSound,
-  type CustomSound,
-} from "@/lib/customSounds";
+import { playBuffer, randomEmoji } from "@/lib/customSounds";
+import { blobToBase64 } from "@/lib/publishPodcast";
+import { fetchSounds, uploadSoundFn, deleteSoundFn } from "@/lib/sounds.functions";
+import type { SoundRow } from "@/lib/sounds.server";
+import { useAuth } from "@/lib/auth";
 import { TEMPLATES, type PodcastTemplate } from "@/lib/podcastTemplates";
 import { printTemplateGuide } from "@/lib/printTemplate";
 import type { AiEditResult } from "@/routes/api/ai-edit";
@@ -59,6 +56,7 @@ function formatTime(s: number) {
 }
 
 function RadioStudio() {
+  const { user } = useAuth();
   const [status, setStatus] = useState<Status>("idle");
   const [seconds, setSeconds] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -69,10 +67,10 @@ function RadioStudio() {
   const [edited, setEdited] = useState<AutoEditResult | null>(null);
   const [ai, setAi] = useState<AiEditResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [customSounds, setCustomSounds] = useState<CustomSound[]>([]);
+  const [sounds, setSounds] = useState<SoundRow[]>([]);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [activeCustom, setActiveCustom] = useState<string | null>(null);
+  const [activeCustom, setActiveCustom] = useState<number | null>(null);
   const [template, setTemplate] = useState<PodcastTemplate | null>(null);
   const [bgTrack, setBgTrack] = useState<string | null>(null);
   const [bgVolume, setBgVolume] = useState(0.12);
@@ -87,7 +85,7 @@ function RadioStudio() {
   const [mp3Url, setMp3Url] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const bufferCache = useRef<Map<string, AudioBuffer>>(new Map());
+  const bufferCache = useRef<Map<number, AudioBuffer>>(new Map());
 
   const COL1_DEFAULT = 300;
   const COL3_DEFAULT = 360;
@@ -195,11 +193,15 @@ function RadioStudio() {
     window.setTimeout(() => setActiveEffect((cur) => (cur === id ? null : cur)), 500);
   };
 
-  useEffect(() => {
-    listCustomSounds()
-      .then(setCustomSounds)
+  const refreshSounds = useCallback(() => {
+    fetchSounds()
+      .then(setSounds)
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    refreshSounds();
+  }, [refreshSounds]);
 
   const destinationsNow = (ctx: AudioContext) => {
     const destinations: AudioNode[] = [];
@@ -209,12 +211,13 @@ function RadioStudio() {
     return destinations;
   };
 
-  const triggerCustom = async (sound: CustomSound) => {
+  const triggerCustom = async (sound: SoundRow) => {
     const ctx = ensureCtx();
     try {
       let buffer = bufferCache.current.get(sound.id);
       if (!buffer) {
-        buffer = await ctx.decodeAudioData(await sound.blob.arrayBuffer());
+        const res = await fetch(`/api/public/sound/${sound.id}`);
+        buffer = await ctx.decodeAudioData(await res.arrayBuffer());
         bufferCache.current.set(sound.id, buffer);
       }
       playBuffer(ctx, buffer, destinationsNow(ctx), {
@@ -226,7 +229,7 @@ function RadioStudio() {
       setActiveCustom(sound.id);
       window.setTimeout(() => setActiveCustom((cur) => (cur === sound.id ? null : cur)), 500);
     } catch {
-      setError(`No s'ha pogut reproduir "${sound.name}". Prova amb un fitxer MP3 o WAV.`);
+      setError(`No s'ha pogut reproduir "${sound.name}".`);
     }
   };
 
@@ -234,9 +237,16 @@ function RadioStudio() {
     const list = files ? Array.from(files as ArrayLike<File>) : [];
     if (list.length === 0) return;
     setError(null);
+
+    if (!user) {
+      setError("Inicia sessió amb Google per afegir sons a la galeria compartida de la classe.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setUploadStatus(`Pujant ${list.length} so${list.length > 1 ? "ns" : ""}...`);
 
-    const added: CustomSound[] = [];
+    let addedCount = 0;
     const rejected: string[] = [];
 
     for (const file of list) {
@@ -249,25 +259,25 @@ function RadioStudio() {
         rejected.push(`${file.name} (més de 8 MB)`);
         continue;
       }
-      const sound: CustomSound = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name: file.name.replace(/\.[^.]+$/, "").slice(0, 24) || "El meu so",
-        emoji: randomEmoji(),
-        blob: file,
-      };
       try {
-        await saveCustomSound(sound);
-        added.push(sound);
+        const dataBase64 = await blobToBase64(file);
+        await uploadSoundFn({
+          data: {
+            name: file.name.replace(/\.[^.]+$/, "").slice(0, 24) || "El meu so",
+            emoji: randomEmoji(),
+            mime: file.type || "audio/mpeg",
+            dataBase64,
+          },
+        });
+        addedCount += 1;
       } catch {
-        rejected.push(`${file.name} (no s'ha pogut desar)`);
+        rejected.push(`${file.name} (no s'ha pogut pujar)`);
       }
     }
 
-    if (added.length > 0) setCustomSounds((cur) => [...cur, ...added]);
+    if (addedCount > 0) refreshSounds();
     setUploadStatus(
-      added.length > 0
-        ? `Fet! S'han creat ${added.length} bot${added.length > 1 ? "ons nous" : "ó nou"}.`
-        : null,
+      addedCount > 0 ? `Fet! S'han afegit ${addedCount} so${addedCount > 1 ? "ns" : ""} a la galeria.` : null,
     );
     if (rejected.length > 0) setError(`No s'han pogut afegir: ${rejected.join(", ")}.`);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -280,10 +290,14 @@ function RadioStudio() {
     void handleUpload(Array.from(e.dataTransfer.files));
   };
 
-  const removeCustom = async (id: string) => {
-    await deleteCustomSound(id).catch(() => undefined);
-    bufferCache.current.delete(id);
-    setCustomSounds((cur) => cur.filter((s) => s.id !== id));
+  const removeCustom = async (id: number) => {
+    try {
+      await deleteSoundFn({ data: { id } });
+      bufferCache.current.delete(id);
+      setSounds((cur) => cur.filter((s) => s.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No s'ha pogut esborrar el so.");
+    }
   };
 
   /** Llista de micròfons disponibles (per al mode a dos). */
@@ -849,7 +863,7 @@ function RadioStudio() {
 
               <div className="mt-4 border-t border-border pt-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">Els teus sons</h3>
+                  <h3 className="text-sm font-semibold">Sons de la classe</h3>
                   <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="size-4" /> Pujar sons
                   </Button>
@@ -862,6 +876,10 @@ function RadioStudio() {
                     onChange={(e) => void handleUpload(e.target.files)}
                   />
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Galeria compartida: tothom de l'escola pot fer servir els sons que hi puja la classe.
+                  {!user && " Inicia sessió per afegir-ne de nous."}
+                </p>
 
                 <div
                   onDragOver={(e) => {
@@ -882,9 +900,9 @@ function RadioStudio() {
                   <p className="mt-2 text-center text-xs font-semibold text-accent">{uploadStatus}</p>
                 )}
 
-                {customSounds.length > 0 && (
+                {sounds.length > 0 && (
                   <div className="mt-3 grid grid-cols-5 gap-2">
-                    {customSounds.map((s) => (
+                    {sounds.map((s) => (
                       <div key={s.id} className="relative">
                         <button
                           onClick={() => void triggerCustom(s)}
@@ -898,13 +916,15 @@ function RadioStudio() {
                           <span className="text-2xl">{s.emoji}</span>
                           <span className="line-clamp-1 text-[11px] font-semibold">{s.name}</span>
                         </button>
-                        <button
-                          onClick={() => void removeCustom(s.id)}
-                          aria-label={`Esborrar ${s.name}`}
-                          className="absolute -right-1.5 -top-1.5 rounded-full border border-border bg-card p-1 text-muted-foreground transition-colors hover:text-destructive"
-                        >
-                          <Trash2 className="size-3" />
-                        </button>
+                        {user && user.id === s.owner_user_id && (
+                          <button
+                            onClick={() => void removeCustom(s.id)}
+                            aria-label={`Esborrar ${s.name}`}
+                            className="absolute -right-1.5 -top-1.5 rounded-full border border-border bg-card p-1 text-muted-foreground transition-colors hover:text-destructive"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
