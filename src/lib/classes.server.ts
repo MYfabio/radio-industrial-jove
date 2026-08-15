@@ -39,7 +39,7 @@ export async function createClass(sql: Sql, ownerId: string, name: string): Prom
     try {
       const [row] = await sql`
         INSERT INTO classes (name, invite_code, created_by)
-        VALUES (${name}, ${code}, ${ownerId})
+        VALUES (${name}::text, ${code}::text, ${ownerId}::text)
         RETURNING id, name, invite_code, created_by, created_at
       `;
       return row as unknown as ClassRow;
@@ -56,7 +56,7 @@ export async function listClassesByOwner(sql: Sql, ownerId: string): Promise<Cla
   const rows = await sql`
     SELECT id, name, invite_code, created_by, created_at
       FROM classes
-     WHERE created_by = ${ownerId}
+     WHERE created_by = ${ownerId}::text
      ORDER BY created_at DESC
   `;
   return rows as unknown as ClassRow[];
@@ -66,14 +66,14 @@ export async function joinClassByCode(sql: Sql, userId: string, code: string): P
   const [cls] = await sql`
     SELECT id, name, invite_code, created_by, created_at
       FROM classes
-     WHERE invite_code = ${code.trim().toUpperCase()}
+     WHERE invite_code = ${code.trim().toUpperCase()}::text
   `;
   if (!cls) return null;
-  await sql`UPDATE profiles SET class_id = ${(cls as unknown as ClassRow).id} WHERE auth_user_id = ${userId}`;
+  await sql`UPDATE profiles SET class_id = ${(cls as unknown as ClassRow).id}::int WHERE auth_user_id = ${userId}::text`;
   return cls as unknown as ClassRow;
 }
 
 export async function getClassById(sql: Sql, id: number): Promise<ClassRow | null> {
-  const [row] = await sql`SELECT id, name, invite_code, created_by, created_at FROM classes WHERE id = ${id}`;
+  const [row] = await sql`SELECT id, name, invite_code, created_by, created_at FROM classes WHERE id = ${id}::int`;
   return (row as unknown as ClassRow) ?? null;
 }

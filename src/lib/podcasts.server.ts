@@ -113,7 +113,7 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
       ${data.title}, ${data.desc}, ${data.cat}, ${data.author}, ${data.tags},
       ${data.transcript}, ${Math.round(data.dur || 0)}, 'pendent',
       ${data.template}, ${data.cover}, ${audio}, ${data.audioMime},
-      ${cover}, ${data.coverMime}, ${data.publishAt}, ${data.classId}, ${data.ownerId}
+      ${cover}, ${data.coverMime}, ${data.publishAt}, ${data.classId}::int, ${data.ownerId}::text
     )
     RETURNING id
   `;
@@ -153,7 +153,7 @@ export async function listMine(sql: Sql, ownerId: string) {
   await ensureSchema(sql);
   await ensureClassesSchema(sql);
   const rows = await sql.unsafe(
-    `SELECT ${LIST_COLUMNS} FROM ${LIST_FROM} WHERE p.owner_user_id = $1 ORDER BY p.created_at DESC LIMIT 200`,
+    `SELECT ${LIST_COLUMNS} FROM ${LIST_FROM} WHERE p.owner_user_id = $1::text ORDER BY p.created_at DESC LIMIT 200`,
     [ownerId],
   );
   return rows as unknown as PodcastRow[];
@@ -168,7 +168,7 @@ export async function listFavoritesForUser(sql: Sql, userId: string) {
   const rows = await sql.unsafe(
     `SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
      JOIN favorites f ON f.podcast_id = p.id
-     WHERE f.auth_user_id = $1
+     WHERE f.auth_user_id = $1::text
      ORDER BY f.created_at DESC`,
     [userId],
   );
@@ -183,7 +183,7 @@ export interface PodcastEdit {
 }
 
 async function assertOwnerOrCoordinador(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
-  const [row] = await sql`SELECT owner_user_id FROM podcasts WHERE id = ${id}`;
+  const [row] = await sql`SELECT owner_user_id FROM podcasts WHERE id = ${id}::int`;
   if (!row) throw new Error("Aquest pòdcast ja no existeix.");
   if (row["owner_user_id"] !== requesterId && !isCoordinador) {
     throw new Error("Només qui l'ha publicat (o el coordinador) pot fer aquest canvi.");
@@ -202,7 +202,7 @@ export async function updatePodcastFields(
   await sql`
     UPDATE podcasts
        SET title = ${data.title}, "desc" = ${data.desc}, cat = ${data.cat}, tags = ${data.tags}
-     WHERE id = ${id}
+     WHERE id = ${id}::int
   `;
   return { ok: true };
 }
@@ -210,7 +210,7 @@ export async function updatePodcastFields(
 export async function deletePodcastRow(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
   await ensureSchema(sql);
   await assertOwnerOrCoordinador(sql, id, requesterId, isCoordinador);
-  await sql`DELETE FROM podcasts WHERE id = ${id}`;
+  await sql`DELETE FROM podcasts WHERE id = ${id}::int`;
   return { ok: true };
 }
 

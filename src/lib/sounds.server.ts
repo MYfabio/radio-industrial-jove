@@ -59,24 +59,24 @@ export async function createSound(
   }
   const [row] = await sql`
     INSERT INTO sounds (name, emoji, mime, data, owner_user_id)
-    VALUES (${data.name}, ${data.emoji}, ${data.mime}, ${bytes}, ${data.ownerId})
+    VALUES (${data.name}::text, ${data.emoji}::text, ${data.mime}::text, ${bytes}, ${data.ownerId}::text)
     RETURNING id, name, emoji, mime, owner_user_id, created_at
   `;
   return row as unknown as SoundRow;
 }
 
 export async function getSoundData(sql: Sql, id: number) {
-  const [row] = await sql`SELECT data, mime FROM sounds WHERE id = ${id}`;
+  const [row] = await sql`SELECT data, mime FROM sounds WHERE id = ${id}::int`;
   if (!row) return null;
   return { data: row["data"] as Uint8Array, mime: row["mime"] as string };
 }
 
 export async function deleteSound(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
-  const [row] = await sql`SELECT owner_user_id FROM sounds WHERE id = ${id}`;
+  const [row] = await sql`SELECT owner_user_id FROM sounds WHERE id = ${id}::int`;
   if (!row) return { ok: true };
   if (row["owner_user_id"] !== requesterId && !isCoordinador) {
     throw new Error("Només qui l'ha pujat (o el coordinador) pot esborrar aquest so.");
   }
-  await sql`DELETE FROM sounds WHERE id = ${id}`;
+  await sql`DELETE FROM sounds WHERE id = ${id}::int`;
   return { ok: true };
 }
