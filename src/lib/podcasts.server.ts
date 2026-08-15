@@ -43,6 +43,7 @@ export async function ensureSchema(sql: Sql) {
   await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS teacher_note TEXT`;
   await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ`;
   await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS class_id INTEGER`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
   await sql`ALTER TABLE podcasts ALTER COLUMN audio_url DROP NOT NULL`;
 }
 
@@ -88,6 +89,7 @@ export interface NewPodcast {
   coverMime: string | null;
   publishAt: string | null;
   classId: number | null;
+  ownerId: string | null;
   origin: string;
 }
 
@@ -106,12 +108,12 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
   const [row] = await sql`
     INSERT INTO podcasts (
       title, "desc", cat, author, tags, transcript, dur, status,
-      template, cover, audio_data, audio_mime, cover_data, cover_mime, publish_at, class_id
+      template, cover, audio_data, audio_mime, cover_data, cover_mime, publish_at, class_id, owner_user_id
     ) VALUES (
       ${data.title}, ${data.desc}, ${data.cat}, ${data.author}, ${data.tags},
       ${data.transcript}, ${Math.round(data.dur || 0)}, 'pendent',
       ${data.template}, ${data.cover}, ${audio}, ${data.audioMime},
-      ${cover}, ${data.coverMime}, ${data.publishAt}, ${data.classId}
+      ${cover}, ${data.coverMime}, ${data.publishAt}, ${data.classId}, ${data.ownerId}
     )
     RETURNING id
   `;
@@ -144,6 +146,72 @@ export async function listAll(sql: Sql) {
     SELECT ${LIST_COLUMNS} FROM ${LIST_FROM} ORDER BY p.created_at DESC LIMIT 300
   `);
   return rows as unknown as PodcastRow[];
+}
+
+/** "El meu espai": els pòdcasts publicats per aquest usuari, del més nou al més vell. */
+export async function listMine(sql: Sql, ownerId: string) {
+  await ensureSchema(sql);
+  await ensureClassesSchema(sql);
+  const rows = await sql.unsafe(
+    `SELECT ${LIST_COLUMNS} FROM ${LIST_FROM} WHERE p.owner_user_id = $1 ORDER BY p.created_at DESC LIMIT 200`,
+    [ownerId],
+  );
+  return rows as unknown as PodcastRow[];
+}
+
+/** "El meu espai": els pòdcasts que aquest usuari ha marcat com a preferits. */
+export async function listFavoritesForUser(sql: Sql, userId: string) {
+  await ensureSchema(sql);
+  await ensureClassesSchema(sql);
+  const { ensureFavoritesSchema } = await import("./favorites.server");
+  await ensureFavoritesSchema(sql);
+  const rows = await sql.unsafe(
+    `SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
+     JOIN favorites f ON f.podcast_id = p.id
+     WHERE f.auth_user_id = $1
+     ORDER BY f.created_at DESC`,
+    [userId],
+  );
+  return rows as unknown as PodcastRow[];
+}
+
+export interface PodcastEdit {
+  title: string;
+  desc: string | null;
+  cat: string | null;
+  tags: string[];
+}
+
+async function assertOwnerOrCoordinador(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
+  const [row] = await sql`SELECT owner_user_id FROM podcasts WHERE id = ${id}`;
+  if (!row) throw new Error("Aquest pòdcast ja no existeix.");
+  if (row["owner_user_id"] !== requesterId && !isCoordinador) {
+    throw new Error("Només qui l'ha publicat (o el coordinador) pot fer aquest canvi.");
+  }
+}
+
+export async function updatePodcastFields(
+  sql: Sql,
+  id: number,
+  requesterId: string,
+  isCoordinador: boolean,
+  data: PodcastEdit,
+) {
+  await ensureSchema(sql);
+  await assertOwnerOrCoordinador(sql, id, requesterId, isCoordinador);
+  await sql`
+    UPDATE podcasts
+       SET title = ${data.title}, "desc" = ${data.desc}, cat = ${data.cat}, tags = ${data.tags}
+     WHERE id = ${id}
+  `;
+  return { ok: true };
+}
+
+export async function deletePodcastRow(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
+  await ensureSchema(sql);
+  await assertOwnerOrCoordinador(sql, id, requesterId, isCoordinador);
+  await sql`DELETE FROM podcasts WHERE id = ${id}`;
+  return { ok: true };
 }
 
 export async function reviewPodcast(

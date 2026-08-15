@@ -5,15 +5,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { optionalSupabaseAuth } from "./optionalAuth.server";
-import type { NewPodcast, PodcastRow } from "./podcasts.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { NewPodcast, PodcastEdit, PodcastRow } from "./podcasts.server";
+import type { Role } from "./settings.server";
 
 export type { PodcastRow };
 
-export interface PublishPodcastInput extends Omit<NewPodcast, "origin" | "classId"> {}
+export interface PublishPodcastInput extends Omit<NewPodcast, "origin" | "classId" | "ownerId"> {}
 
 /**
- * Si qui publica ha iniciat sessió i pertany a una classe, el pòdcast es
- * marca amb aquesta classe automàticament (l'alumne no ho pot triar).
+ * Si qui publica ha iniciat sessió, el pòdcast queda vinculat al seu compte
+ * (per a "El meu espai") i, si pertany a una classe, es marca amb aquesta
+ * classe automàticament (l'alumne no ho pot triar).
  */
 export const insertPodcast = createServerFn({ method: "POST" })
   .middleware([optionalSupabaseAuth])
@@ -32,7 +35,63 @@ export const insertPodcast = createServerFn({ method: "POST" })
         const profile = await getOrCreateProfile(sql, context.userId, context.email);
         classId = profile.class_id;
       }
-      return await createPodcast(sql, { ...data, classId, origin });
+      return await createPodcast(sql, { ...data, classId, ownerId: context.userId, origin });
+    } finally {
+      await sql.end();
+    }
+  });
+
+/** "El meu espai": els pòdcasts que ha publicat l'usuari actual. */
+export const fetchMyPodcasts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getSql, listMine } = await import("./podcasts.server");
+    const sql = getSql();
+    try {
+      return await listMine(sql, context.userId);
+    } finally {
+      await sql.end();
+    }
+  });
+
+export interface UpdatePodcastInput extends PodcastEdit {
+  id: number;
+}
+
+export const updatePodcastFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: UpdatePodcastInput) => input)
+  .handler(async ({ context, data }) => {
+    const { getSql, updatePodcastFields } = await import("./podcasts.server");
+    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const sql = getSql();
+    try {
+      await ensureSettingsSchema(sql);
+      const email = (context.claims.email as string | undefined) ?? "";
+      const profile = await getOrCreateProfile(sql, context.userId, email);
+      const { id, ...fields } = data;
+      return await updatePodcastFields(sql, id, context.userId, (profile.role as Role) === "coordinador", fields);
+    } finally {
+      await sql.end();
+    }
+  });
+
+export interface DeletePodcastInput {
+  id: number;
+}
+
+export const deletePodcastFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: DeletePodcastInput) => input)
+  .handler(async ({ context, data }) => {
+    const { getSql, deletePodcastRow } = await import("./podcasts.server");
+    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const sql = getSql();
+    try {
+      await ensureSettingsSchema(sql);
+      const email = (context.claims.email as string | undefined) ?? "";
+      const profile = await getOrCreateProfile(sql, context.userId, email);
+      return await deletePodcastRow(sql, data.id, context.userId, (profile.role as Role) === "coordinador");
     } finally {
       await sql.end();
     }
