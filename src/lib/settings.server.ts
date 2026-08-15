@@ -19,6 +19,7 @@ export interface ProfileRow {
   auth_user_id: string;
   email: string;
   role: Role;
+  class_id: number | null;
 }
 
 export async function ensureSettingsSchema(sql: Sql) {
@@ -62,7 +63,9 @@ export async function updateSettings(
 }
 
 export async function getOrCreateProfile(sql: Sql, userId: string, email: string): Promise<ProfileRow> {
-  const [existing] = await sql`SELECT auth_user_id, email, role FROM profiles WHERE auth_user_id = ${userId}`;
+  const [existing] = await sql`
+    SELECT auth_user_id, email, role, class_id FROM profiles WHERE auth_user_id = ${userId}
+  `;
   if (existing) return existing as unknown as ProfileRow;
 
   const role: Role = email.toLowerCase() === SEED_COORDINADOR_EMAIL ? "coordinador" : "alumne";
@@ -70,7 +73,7 @@ export async function getOrCreateProfile(sql: Sql, userId: string, email: string
     INSERT INTO profiles (auth_user_id, email, role)
     VALUES (${userId}, ${email}, ${role})
     ON CONFLICT (auth_user_id) DO UPDATE SET email = EXCLUDED.email
-    RETURNING auth_user_id, email, role
+    RETURNING auth_user_id, email, role, class_id
   `;
   return created as unknown as ProfileRow;
 }

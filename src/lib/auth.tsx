@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
 import { fetchMyProfile } from "./settings.functions";
@@ -8,9 +8,11 @@ interface AuthState {
   user: User | null;
   session: Session | null;
   role: Role | null;
+  classId: number | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProfile: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<Role | null>(null);
+  const [classId, setClassId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,15 +36,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
+  const loadProfile = useCallback(() => {
     if (!session?.user) {
       setRole(null);
+      setClassId(null);
       return;
     }
     fetchMyProfile()
-      .then((profile) => setRole(profile.role as Role))
-      .catch(() => setRole(null));
-  }, [session?.user?.id]);
+      .then((profile) => {
+        setRole(profile.role as Role);
+        setClassId(profile.class_id);
+      })
+      .catch(() => {
+        setRole(null);
+        setClassId(null);
+      });
+  }, [session?.user]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
@@ -56,7 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, role, loading, signInWithGoogle, signOut }}
+      value={{
+        user: session?.user ?? null,
+        session,
+        role,
+        classId,
+        loading,
+        signInWithGoogle,
+        signOut,
+        refreshProfile: loadProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>

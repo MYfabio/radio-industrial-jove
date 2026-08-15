@@ -7,9 +7,11 @@ export const fetchMyProfile = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { getSql } = await import("./podcasts.server");
     const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const { ensureClassesSchema } = await import("./classes.server");
     const sql = getSql();
     try {
       await ensureSettingsSchema(sql);
+      await ensureClassesSchema(sql);
       const email = (context.claims.email as string | undefined) ?? "";
       return await getOrCreateProfile(sql, context.userId, email);
     } finally {
@@ -40,9 +42,11 @@ export const updateSiteSettingsFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { getSql } = await import("./podcasts.server");
     const { ensureSettingsSchema, getOrCreateProfile, updateSettings } = await import("./settings.server");
+    const { ensureClassesSchema } = await import("./classes.server");
     const sql = getSql();
     try {
       await ensureSettingsSchema(sql);
+      await ensureClassesSchema(sql);
       const email = (context.claims.email as string | undefined) ?? "";
       const profile = await getOrCreateProfile(sql, context.userId, email);
       if ((profile.role as Role) !== "coordinador") {

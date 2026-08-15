@@ -9,16 +9,30 @@ import type { NewPodcast, PodcastRow } from "./podcasts.server";
 
 export type { PodcastRow };
 
-export interface PublishPodcastInput extends Omit<NewPodcast, "origin"> {}
+export interface PublishPodcastInput extends Omit<NewPodcast, "origin" | "classId"> {}
 
+/**
+ * Si qui publica ha iniciat sessió i pertany a una classe, el pòdcast es
+ * marca amb aquesta classe automàticament (l'alumne no ho pot triar).
+ */
 export const insertPodcast = createServerFn({ method: "POST" })
+  .middleware([optionalSupabaseAuth])
   .inputValidator((input: PublishPodcastInput) => input)
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     const { getSql, createPodcast } = await import("./podcasts.server");
+    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const { ensureClassesSchema } = await import("./classes.server");
     const origin = new URL(getRequest().url).origin;
     const sql = getSql();
     try {
-      return await createPodcast(sql, { ...data, origin });
+      let classId: number | null = null;
+      if (context.userId && context.email) {
+        await ensureSettingsSchema(sql);
+        await ensureClassesSchema(sql);
+        const profile = await getOrCreateProfile(sql, context.userId, context.email);
+        classId = profile.class_id;
+      }
+      return await createPodcast(sql, { ...data, classId, origin });
     } finally {
       await sql.end();
     }

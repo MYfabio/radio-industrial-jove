@@ -3,6 +3,7 @@
  * Tot (fitxa + àudio + caràtula) es desa aquí: no depèn de cap emmagatzematge extern.
  */
 import postgres from "postgres";
+import { ensureClassesSchema } from "./classes.server";
 
 export type Sql = ReturnType<typeof postgres>;
 
@@ -41,6 +42,7 @@ export async function ensureSchema(sql: Sql) {
   await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS template TEXT`;
   await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS teacher_note TEXT`;
   await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS class_id INTEGER`;
   await sql`ALTER TABLE podcasts ALTER COLUMN audio_url DROP NOT NULL`;
 }
 
@@ -61,11 +63,14 @@ export interface PodcastRow {
   publish_at: string | null;
   created_at: string;
   has_cover_image?: boolean;
+  class_id: number | null;
+  class_name: string | null;
 }
 
-const LIST_COLUMNS = `id, title, "desc", cat, author, tags, audio_url, transcript,
-  dur, status, cover, template, teacher_note, publish_at, created_at,
-  (cover_data IS NOT NULL) AS has_cover_image`;
+const LIST_COLUMNS = `p.id, p.title, p."desc", p.cat, p.author, p.tags, p.audio_url, p.transcript,
+  p.dur, p.status, p.cover, p.template, p.teacher_note, p.publish_at, p.created_at,
+  (p.cover_data IS NOT NULL) AS has_cover_image, p.class_id, c.name AS class_name`;
+const LIST_FROM = `podcasts p LEFT JOIN classes c ON c.id = p.class_id`;
 
 export interface NewPodcast {
   title: string;
@@ -82,6 +87,7 @@ export interface NewPodcast {
   coverBase64: string | null;
   coverMime: string | null;
   publishAt: string | null;
+  classId: number | null;
   origin: string;
 }
 
@@ -100,12 +106,12 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
   const [row] = await sql`
     INSERT INTO podcasts (
       title, "desc", cat, author, tags, transcript, dur, status,
-      template, cover, audio_data, audio_mime, cover_data, cover_mime, publish_at
+      template, cover, audio_data, audio_mime, cover_data, cover_mime, publish_at, class_id
     ) VALUES (
       ${data.title}, ${data.desc}, ${data.cat}, ${data.author}, ${data.tags},
       ${data.transcript}, ${Math.round(data.dur || 0)}, 'pendent',
       ${data.template}, ${data.cover}, ${audio}, ${data.audioMime},
-      ${cover}, ${data.coverMime}, ${data.publishAt}
+      ${cover}, ${data.coverMime}, ${data.publishAt}, ${data.classId}
     )
     RETURNING id
   `;
@@ -119,11 +125,12 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
 /** Mur públic: només aprovats i amb la data de publicació ja arribada. */
 export async function listApproved(sql: Sql) {
   await ensureSchema(sql);
+  await ensureClassesSchema(sql);
   const rows = await sql.unsafe(`
-    SELECT ${LIST_COLUMNS} FROM podcasts
-    WHERE status = 'aprovat'
-      AND (publish_at IS NULL OR publish_at <= now())
-    ORDER BY COALESCE(publish_at, created_at) DESC
+    SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
+    WHERE p.status = 'aprovat'
+      AND (p.publish_at IS NULL OR p.publish_at <= now())
+    ORDER BY COALESCE(p.publish_at, p.created_at) DESC
     LIMIT 200
   `);
   return rows as unknown as PodcastRow[];
@@ -132,8 +139,9 @@ export async function listApproved(sql: Sql) {
 /** Panell del mestre: tot, del més nou al més vell. */
 export async function listAll(sql: Sql) {
   await ensureSchema(sql);
+  await ensureClassesSchema(sql);
   const rows = await sql.unsafe(`
-    SELECT ${LIST_COLUMNS} FROM podcasts ORDER BY created_at DESC LIMIT 300
+    SELECT ${LIST_COLUMNS} FROM ${LIST_FROM} ORDER BY p.created_at DESC LIMIT 300
   `);
   return rows as unknown as PodcastRow[];
 }

@@ -1,7 +1,9 @@
-import { LogOut, Settings } from "lucide-react";
+import { useState } from "react";
+import { LogOut, Settings, Users } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "../lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { JoinClassDialog } from "./JoinClassDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +37,8 @@ function GoogleIcon() {
 }
 
 export function AuthButton() {
-  const { user, role, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, role, classId, loading, signInWithGoogle, signOut } = useAuth();
+  const [joinOpen, setJoinOpen] = useState(false);
 
   if (loading) {
     return <div className="size-8 shrink-0 animate-pulse rounded-full bg-secondary" />;
@@ -59,27 +62,35 @@ export function AuthButton() {
   const initial = name.charAt(0).toUpperCase();
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="shrink-0 rounded-full outline-none ring-primary/50 focus-visible:ring-2">
-        <Avatar className="size-8">
-          <AvatarImage src={avatarUrl} alt={name} />
-          <AvatarFallback>{initial}</AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel className="max-w-48 truncate">{name}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {role === "coordinador" && (
-          <DropdownMenuItem asChild>
-            <Link to="/coordinador">
-              <Settings className="size-4" /> Panell de coordinador
-            </Link>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger className="shrink-0 rounded-full outline-none ring-primary/50 focus-visible:ring-2">
+          <Avatar className="size-8">
+            <AvatarImage src={avatarUrl} alt={name} />
+            <AvatarFallback>{initial}</AvatarFallback>
+          </Avatar>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel className="max-w-48 truncate">{name}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {role === "coordinador" && (
+            <DropdownMenuItem asChild>
+              <Link to="/coordinador">
+                <Settings className="size-4" /> Panell de coordinador
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {role === "alumne" && !classId && (
+            <DropdownMenuItem onClick={() => setJoinOpen(true)}>
+              <Users className="size-4" /> Uneix-te a una classe
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={() => void signOut()}>
+            <LogOut className="size-4" /> Surt
           </DropdownMenuItem>
-        )}
-        <DropdownMenuItem onClick={() => void signOut()}>
-          <LogOut className="size-4" /> Surt
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <JoinClassDialog open={joinOpen} onOpenChange={setJoinOpen} />
+    </>
   );
 }
