@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogOut, Settings, Users } from "lucide-react";
+import { LogOut, Settings, Users, User } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "../lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -73,6 +73,11 @@ export function AuthButton() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel className="max-w-48 truncate">{name}</DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/espai">
+              <User className="size-4" /> El meu espai
+            </Link>
+          </DropdownMenuItem>
           {role === "coordinador" && (
             <DropdownMenuItem asChild>
               <Link to="/coordinador">
