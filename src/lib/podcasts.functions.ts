@@ -8,6 +8,7 @@ import { optionalSupabaseAuth } from "./optionalAuth.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { NewPodcast, PodcastEdit, PodcastRow } from "./podcasts.server";
 import type { Role } from "./settings.server";
+import { describePgError } from "./pgError";
 
 export type { PodcastRow };
 
@@ -36,6 +37,8 @@ export const insertPodcast = createServerFn({ method: "POST" })
         classId = profile.class_id;
       }
       return await createPodcast(sql, { ...data, classId, ownerId: context.userId, origin });
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Role } from "./settings.server";
 import type { ClassRow } from "./classes.server";
+import { describePgError } from "./pgError";
 
 export type { ClassRow };
 
@@ -34,6 +35,8 @@ export const createClassFn = createServerFn({ method: "POST" })
       const name = data.name.trim();
       if (!name) throw new Error("Posa-hi un nom per a la classe.");
       return await createClass(sql, context.userId, name);
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }
@@ -48,6 +51,8 @@ export const fetchMyClasses = createServerFn({ method: "GET" })
     try {
       await ensureAll(sql);
       return await listClassesByOwner(sql, context.userId);
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }

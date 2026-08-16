@@ -180,6 +180,7 @@ function ClassesPanel() {
     data: classes,
     isLoading,
     isError,
+    error: loadError,
   } = useQuery({
     queryKey: ["classes", "meves"],
     queryFn: () => list({}),
@@ -260,7 +261,8 @@ function ClassesPanel() {
 
       {isError && (
         <p className="mt-2 text-sm text-destructive-foreground">
-          No s'han pogut carregar les teves classes. Refresca la pàgina i torna-ho a provar.
+          No s'han pogut carregar les teves classes:{" "}
+          {loadError instanceof Error ? loadError.message : "error desconegut"}
         </p>
       )}
 
