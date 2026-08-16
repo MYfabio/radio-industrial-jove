@@ -21,8 +21,11 @@ export function getSql(): Sql {
     // SQLSTATE 42P18). Per això totes les consultes d'aquest projecte
     // incrusten els valors com a literals ja escapats (sql.unsafe + helpers
     // de src/lib/sqlLiteral.ts) en lloc de fer-los servir com a paràmetres.
+    // fetch_types s'ha de deixar activat (per defecte): és el que permet a
+    // la llibreria interpretar columnes de tipus llista (com tags) — la
+    // seva pròpia consulta interna no fa servir paràmetres, així que no
+    // topa amb el problema del pooler.
     prepare: false,
-    fetch_types: false,
   });
 }
 

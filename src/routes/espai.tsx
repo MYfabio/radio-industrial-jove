@@ -40,7 +40,7 @@ function MyPodcastCard({ p, onChanged }: { p: PodcastRow; onChanged: () => void 
   const [title, setTitle] = useState(p.title);
   const [desc, setDesc] = useState(p.desc ?? "");
   const [cat, setCat] = useState(p.cat ?? "");
-  const [tags, setTags] = useState((p.tags ?? []).join(", "));
+  const [tags, setTags] = useState((Array.isArray(p.tags) ? p.tags : []).join(", "));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

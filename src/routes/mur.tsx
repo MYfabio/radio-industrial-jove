@@ -260,7 +260,7 @@ function DetailDialog({
             {canShare && <ShareButton id={p.id} />}
           </div>
 
-          {p.tags && p.tags.length > 0 && (
+          {Array.isArray(p.tags) && p.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5">
               {p.tags.map((t) => (
                 <span
@@ -365,7 +365,7 @@ function Wall() {
         (p) =>
           p.title.toLowerCase().includes(q) ||
           (p.author ?? "").toLowerCase().includes(q) ||
-          (p.tags ?? []).some((t) => t.toLowerCase().includes(q)),
+          (Array.isArray(p.tags) ? p.tags : []).some((t) => t.toLowerCase().includes(q)),
       )
     : data;
 
