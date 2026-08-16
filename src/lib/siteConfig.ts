@@ -6,5 +6,12 @@
 export const SITE_NAME = "Ràdio Escolar";
 export const SITE_TAGLINE = "Estudi de ràdio per a alumnes";
 
+/** Adreça pública del lloc (per a SEO: canonical, og:url, sitemap). */
+export const SITE_URL = "https://radio-industrial-jove-production.up.railway.app";
+
+/** Nom del centre educatiu, per a la política de privacitat i l'avís legal. */
+export const SCHOOL_NAME = "Institut Escola Industrial de Sabadell";
+export const SCHOOL_CONTACT_EMAIL = "fabio.martinez@escolaindustrial.org";
+
 /** Plantilla de Canva per fer caràtules de pòdcast (mateix disseny per a tota la classe). */
 export const CANVA_COVER_TEMPLATE_URL = "https://www.canva.com/d/XLXcBPP7gjLNKz0";

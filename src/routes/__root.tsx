@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SITE_NAME, SITE_TAGLINE } from "../lib/siteConfig";
 import { AuthProvider } from "../lib/auth";
+import { CookieNotice } from "../components/CookieNotice";
 
 function NotFoundComponent() {
   return (
@@ -81,17 +82,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: SITE_NAME },
       { name: "description", content: `${SITE_TAGLINE}: grava el teu pòdcast amb efectes i edició amb IA.` },
+      { name: "theme-color", content: "#10182B" },
+      { property: "og:site_name", content: SITE_NAME },
       { property: "og:title", content: SITE_NAME },
       { property: "og:description", content: `${SITE_TAGLINE}: grava, afegeix efectes i edita amb IA.` },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "ca_ES" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: SITE_NAME },
+      { name: "twitter:description", content: `${SITE_TAGLINE}: grava, afegeix efectes i edita amb IA.` },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/favicon.svg" },
     ],
   }),
   shellComponent: RootShell,
@@ -122,6 +129,7 @@ function RootComponent() {
       <AuthProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
+        <CookieNotice />
       </AuthProvider>
     </QueryClientProvider>
   );

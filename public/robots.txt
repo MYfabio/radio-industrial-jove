@@ -12,3 +12,5 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://radio-industrial-jove-production.up.railway.app/sitemap.xml
