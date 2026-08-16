@@ -4,6 +4,7 @@
  */
 import postgres from "postgres";
 import { ensureClassesSchema } from "./classes.server";
+import { sqlText, sqlInt, sqlTextArray, sqlBytea } from "./sqlLiteral";
 
 export type Sql = ReturnType<typeof postgres>;
 
@@ -15,19 +16,18 @@ export function getSql(): Sql {
     connect_timeout: 10,
     idle_timeout: 20,
     max_lifetime: 60 * 30,
-    // Connexió darrere d'un pooler: cal desactivar tant les "prepared
-    // statements" com la detecció automàtica de tipus en connectar
-    // (fetch_types fa una consulta pròpia que topa amb el mateix
-    // problema), perquè no hi ha manera que Postgres determini el tipus
-    // dels paràmetres i tot falla amb "could not determine data type of
-    // parameter", des d'abans fins i tot d'arribar a les nostres consultes.
+    // Connexió darrere d'un pooler que no permet a Postgres determinar el
+    // tipus dels paràmetres ("could not determine data type of parameter",
+    // SQLSTATE 42P18). Per això totes les consultes d'aquest projecte
+    // incrusten els valors com a literals ja escapats (sql.unsafe + helpers
+    // de src/lib/sqlLiteral.ts) en lloc de fer-los servir com a paràmetres.
     prepare: false,
     fetch_types: false,
   });
 }
 
 export async function ensureSchema(sql: Sql) {
-  await sql`
+  await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS podcasts (
       id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
@@ -41,18 +41,18 @@ export async function ensureSchema(sql: Sql) {
       status TEXT NOT NULL DEFAULT 'pendent',
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
-  `;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_data BYTEA`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_mime TEXT`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover TEXT`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_data BYTEA`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_mime TEXT`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS template TEXT`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS teacher_note TEXT`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS class_id INTEGER`;
-  await sql`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS owner_user_id TEXT`;
-  await sql`ALTER TABLE podcasts ALTER COLUMN audio_url DROP NOT NULL`;
+  `);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_data BYTEA`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_mime TEXT`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover TEXT`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_data BYTEA`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_mime TEXT`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS template TEXT`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS teacher_note TEXT`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS class_id INTEGER`);
+  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS owner_user_id TEXT`);
+  await sql.unsafe(`ALTER TABLE podcasts ALTER COLUMN audio_url DROP NOT NULL`);
 }
 
 export interface PodcastRow {
@@ -113,22 +113,22 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
   const audio = decode(data.audioBase64);
   const cover = data.coverBase64 ? decode(data.coverBase64) : null;
 
-  const [row] = await sql`
+  const [row] = await sql.unsafe(`
     INSERT INTO podcasts (
       title, "desc", cat, author, tags, transcript, dur, status,
       template, cover, audio_data, audio_mime, cover_data, cover_mime, publish_at, class_id, owner_user_id
     ) VALUES (
-      ${data.title}::text, ${data.desc}::text, ${data.cat}::text, ${data.author}::text, ${data.tags}::text[],
-      ${data.transcript}::text, ${Math.round(data.dur || 0)}, 'pendent',
-      ${data.template}::text, ${data.cover}::text, ${audio}::bytea, ${data.audioMime}::text,
-      ${cover}::bytea, ${data.coverMime}::text, ${data.publishAt}::timestamptz, ${data.classId}::int, ${data.ownerId}::text
+      ${sqlText(data.title)}, ${sqlText(data.desc)}, ${sqlText(data.cat)}, ${sqlText(data.author)}, ${sqlTextArray(data.tags)},
+      ${sqlText(data.transcript)}, ${sqlInt(Math.round(data.dur || 0))}, 'pendent',
+      ${sqlText(data.template)}, ${sqlText(data.cover)}, ${sqlBytea(audio)}, ${sqlText(data.audioMime)},
+      ${sqlBytea(cover)}, ${sqlText(data.coverMime)}, ${sqlText(data.publishAt)}::timestamptz, ${sqlInt(data.classId)}, ${sqlText(data.ownerId)}
     )
     RETURNING id
-  `;
+  `);
 
   const id = row!["id"] as number;
   const audioUrl = `${data.origin.replace(/\/$/, "")}/api/public/audio/${id}`;
-  await sql`UPDATE podcasts SET audio_url = ${audioUrl}::text WHERE id = ${id}::int`;
+  await sql.unsafe(`UPDATE podcasts SET audio_url = ${sqlText(audioUrl)} WHERE id = ${sqlInt(id)}`);
   return { id, audio_url: audioUrl };
 }
 
@@ -161,8 +161,7 @@ export async function listMine(sql: Sql, ownerId: string) {
   await ensureSchema(sql);
   await ensureClassesSchema(sql);
   const rows = await sql.unsafe(
-    `SELECT ${LIST_COLUMNS} FROM ${LIST_FROM} WHERE p.owner_user_id = $1::text ORDER BY p.created_at DESC LIMIT 200`,
-    [ownerId],
+    `SELECT ${LIST_COLUMNS} FROM ${LIST_FROM} WHERE p.owner_user_id = ${sqlText(ownerId)} ORDER BY p.created_at DESC LIMIT 200`,
   );
   return rows as unknown as PodcastRow[];
 }
@@ -173,13 +172,11 @@ export async function listFavoritesForUser(sql: Sql, userId: string) {
   await ensureClassesSchema(sql);
   const { ensureFavoritesSchema } = await import("./favorites.server");
   await ensureFavoritesSchema(sql);
-  const rows = await sql.unsafe(
-    `SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
+  const rows = await sql.unsafe(`
+    SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
      JOIN favorites f ON f.podcast_id = p.id
-     WHERE f.auth_user_id = $1::text
-     ORDER BY f.created_at DESC`,
-    [userId],
-  );
+     WHERE f.auth_user_id = ${sqlText(userId)}
+     ORDER BY f.created_at DESC`);
   return rows as unknown as PodcastRow[];
 }
 
@@ -191,7 +188,7 @@ export interface PodcastEdit {
 }
 
 async function assertOwnerOrCoordinador(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
-  const [row] = await sql`SELECT owner_user_id FROM podcasts WHERE id = ${id}::int`;
+  const [row] = await sql.unsafe(`SELECT owner_user_id FROM podcasts WHERE id = ${sqlInt(id)}`);
   if (!row) throw new Error("Aquest pòdcast ja no existeix.");
   if (row["owner_user_id"] !== requesterId && !isCoordinador) {
     throw new Error("Només qui l'ha publicat (o el coordinador) pot fer aquest canvi.");
@@ -207,18 +204,18 @@ export async function updatePodcastFields(
 ) {
   await ensureSchema(sql);
   await assertOwnerOrCoordinador(sql, id, requesterId, isCoordinador);
-  await sql`
+  await sql.unsafe(`
     UPDATE podcasts
-       SET title = ${data.title}::text, "desc" = ${data.desc}::text, cat = ${data.cat}::text, tags = ${data.tags}::text[]
-     WHERE id = ${id}::int
-  `;
+       SET title = ${sqlText(data.title)}, "desc" = ${sqlText(data.desc)}, cat = ${sqlText(data.cat)}, tags = ${sqlTextArray(data.tags)}
+     WHERE id = ${sqlInt(id)}
+  `);
   return { ok: true };
 }
 
 export async function deletePodcastRow(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
   await ensureSchema(sql);
   await assertOwnerOrCoordinador(sql, id, requesterId, isCoordinador);
-  await sql`DELETE FROM podcasts WHERE id = ${id}::int`;
+  await sql.unsafe(`DELETE FROM podcasts WHERE id = ${sqlInt(id)}`);
   return { ok: true };
 }
 
@@ -230,20 +227,20 @@ export async function reviewPodcast(
   publishAt: string | null,
 ) {
   await ensureSchema(sql);
-  await sql`
+  await sql.unsafe(`
     UPDATE podcasts
-       SET status = ${status}::text,
-           teacher_note = ${teacherNote}::text,
-           publish_at = ${publishAt}::timestamptz
-     WHERE id = ${id}::int
-  `;
+       SET status = ${sqlText(status)},
+           teacher_note = ${sqlText(teacherNote)},
+           publish_at = ${sqlText(publishAt)}::timestamptz
+     WHERE id = ${sqlInt(id)}
+  `);
   return { ok: true };
 }
 
 export async function getAudio(sql: Sql, id: number) {
-  const [row] = await sql`
-    SELECT audio_data, audio_mime, title FROM podcasts WHERE id = ${id}::int
-  `;
+  const [row] = await sql.unsafe(
+    `SELECT audio_data, audio_mime, title FROM podcasts WHERE id = ${sqlInt(id)}`,
+  );
   if (!row || !row["audio_data"]) return null;
   return {
     data: row["audio_data"] as Uint8Array,
@@ -253,7 +250,7 @@ export async function getAudio(sql: Sql, id: number) {
 }
 
 export async function getCover(sql: Sql, id: number) {
-  const [row] = await sql`SELECT cover_data, cover_mime FROM podcasts WHERE id = ${id}::int`;
+  const [row] = await sql.unsafe(`SELECT cover_data, cover_mime FROM podcasts WHERE id = ${sqlInt(id)}`);
   if (!row || !row["cover_data"]) return null;
   return {
     data: row["cover_data"] as Uint8Array,

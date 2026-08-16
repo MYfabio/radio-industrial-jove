@@ -3,6 +3,7 @@
  * classe (profiles.class_id); un docent pot crear-ne diverses.
  */
 import type { Sql } from "./podcasts.server";
+import { sqlText, sqlInt } from "./sqlLiteral";
 
 export interface ClassRow {
   id: number;
@@ -13,7 +14,7 @@ export interface ClassRow {
 }
 
 export async function ensureClassesSchema(sql: Sql) {
-  await sql`
+  await sql.unsafe(`
     CREATE TABLE IF NOT EXISTS classes (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
@@ -21,8 +22,8 @@ export async function ensureClassesSchema(sql: Sql) {
       created_by TEXT NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
-  `;
-  await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES classes(id)`;
+  `);
+  await sql.unsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES classes(id)`);
 }
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sense lletres/números que es confonen
@@ -37,11 +38,11 @@ export async function createClass(sql: Sql, ownerId: string, name: string): Prom
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
     try {
-      const [row] = await sql`
+      const [row] = await sql.unsafe(`
         INSERT INTO classes (name, invite_code, created_by)
-        VALUES (${name}::text, ${code}::text, ${ownerId}::text)
+        VALUES (${sqlText(name)}, ${sqlText(code)}, ${sqlText(ownerId)})
         RETURNING id, name, invite_code, created_by, created_at
-      `;
+      `);
       return row as unknown as ClassRow;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -53,27 +54,31 @@ export async function createClass(sql: Sql, ownerId: string, name: string): Prom
 }
 
 export async function listClassesByOwner(sql: Sql, ownerId: string): Promise<ClassRow[]> {
-  const rows = await sql`
+  const rows = await sql.unsafe(`
     SELECT id, name, invite_code, created_by, created_at
       FROM classes
-     WHERE created_by = ${ownerId}::text
+     WHERE created_by = ${sqlText(ownerId)}
      ORDER BY created_at DESC
-  `;
+  `);
   return rows as unknown as ClassRow[];
 }
 
 export async function joinClassByCode(sql: Sql, userId: string, code: string): Promise<ClassRow | null> {
-  const [cls] = await sql`
+  const [cls] = await sql.unsafe(`
     SELECT id, name, invite_code, created_by, created_at
       FROM classes
-     WHERE invite_code = ${code.trim().toUpperCase()}::text
-  `;
+     WHERE invite_code = ${sqlText(code.trim().toUpperCase())}
+  `);
   if (!cls) return null;
-  await sql`UPDATE profiles SET class_id = ${(cls as unknown as ClassRow).id}::int WHERE auth_user_id = ${userId}::text`;
+  await sql.unsafe(
+    `UPDATE profiles SET class_id = ${sqlInt((cls as unknown as ClassRow).id)} WHERE auth_user_id = ${sqlText(userId)}`,
+  );
   return cls as unknown as ClassRow;
 }
 
 export async function getClassById(sql: Sql, id: number): Promise<ClassRow | null> {
-  const [row] = await sql`SELECT id, name, invite_code, created_by, created_at FROM classes WHERE id = ${id}::int`;
+  const [row] = await sql.unsafe(
+    `SELECT id, name, invite_code, created_by, created_at FROM classes WHERE id = ${sqlInt(id)}`,
+  );
   return (row as unknown as ClassRow) ?? null;
 }
