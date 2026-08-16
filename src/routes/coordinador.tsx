@@ -66,7 +66,7 @@ function CoordinatorPanel() {
       <main className="studio-bg flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
         <p className="text-lg font-semibold">Cal iniciar sessió per veure aquest panell.</p>
         <AuthButton />
-        <Link to="/" className="text-sm text-accent hover:underline">
+        <Link to="/estudi" className="text-sm text-accent hover:underline">
           Torna a l'estudi
         </Link>
       </main>
@@ -80,7 +80,7 @@ function CoordinatorPanel() {
         <p className="max-w-sm text-sm text-muted-foreground">
           Aquest panell només és per al coordinador o coordinadora del centre.
         </p>
-        <Link to="/" className="text-sm text-accent hover:underline">
+        <Link to="/estudi" className="text-sm text-accent hover:underline">
           Torna a l'estudi
         </Link>
       </main>

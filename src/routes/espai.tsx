@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -252,6 +252,12 @@ function MySpace() {
           <span className="ml-auto flex items-center gap-2">
             <ThemeToggle />
             <AuthButton />
+            <Link
+              to="/estudi"
+              className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
+            >
+              Anar a l'estudi
+            </Link>
           </span>
         </header>
 

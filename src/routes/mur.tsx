@@ -398,7 +398,7 @@ function Wall() {
             <ThemeToggle />
             <AuthButton />
             <Link
-              to="/"
+              to="/estudi"
               className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
             >
               Gravar-ne un
