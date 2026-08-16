@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fetchAllPodcasts, reviewPodcastFn, type PodcastRow } from "@/lib/podcasts.functions";
-import { createClassFn, fetchMyClasses } from "@/lib/classes.functions";
+import { createClassFn, fetchMyClasses, type ClassRow } from "@/lib/classes.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
 import { notifyPodcastsChanged } from "@/lib/podcastSync";
 import { useAuth } from "@/lib/auth";
@@ -174,8 +174,13 @@ function ClassesPanel() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [justCreated, setJustCreated] = useState<ClassRow | null>(null);
 
-  const { data: classes, isLoading } = useQuery({
+  const {
+    data: classes,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["classes", "meves"],
     queryFn: () => list({}),
     enabled: !!user,
@@ -191,9 +196,13 @@ function ClassesPanel() {
     if (!name.trim()) return;
     setCreating(true);
     setError(null);
+    setJustCreated(null);
     try {
-      await create({ data: { name: name.trim() } });
+      const created = await create({ data: { name: name.trim() } });
       setName("");
+      setJustCreated(created);
+      // Mostrem el codi a l'instant, sense esperar el refetch del servidor.
+      qc.setQueryData<ClassRow[]>(["classes", "meves"], (old) => [created, ...(old ?? [])]);
       await qc.invalidateQueries({ queryKey: ["classes"] });
     } catch (e) {
       setError(e instanceof Error ? e.message : "No s'ha pogut crear la classe.");
@@ -223,9 +232,35 @@ function ClassesPanel() {
         <Users className="size-4" /> Les teves classes
       </h2>
 
+      {justCreated && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3">
+          <p className="text-sm">
+            <span className="font-semibold">Classe «justCreated.name» creada!</span> Dona aquest codi als
+            alumnes perquè s'hi uneixin (menú del seu compte → "Uneix-te a una classe"):
+          </p>
+          <button
+            onClick={() => void copyCode(justCreated.id, justCreated.invite_code)}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/40 bg-card px-3 py-1.5 font-mono text-sm font-bold tracking-widest hover:bg-accent/10"
+          >
+            {copiedId === justCreated.id ? (
+              <Check className="size-3.5 text-accent" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
+            {justCreated.invite_code}
+          </button>
+        </div>
+      )}
+
       {isLoading && (
         <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> Carregant...
+        </p>
+      )}
+
+      {isError && (
+        <p className="mt-2 text-sm text-destructive-foreground">
+          No s'han pogut carregar les teves classes. Refresca la pàgina i torna-ho a provar.
         </p>
       )}
 
@@ -247,6 +282,13 @@ function ClassesPanel() {
             </div>
           ))}
         </div>
+      )}
+
+      {!isLoading && !isError && classes && classes.length === 0 && !justCreated && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Encara no has creat cap classe. Posa-hi un nom i prem "Crea una classe" per obtenir un codi
+          d'invitació de 6 caràcters.
+        </p>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
