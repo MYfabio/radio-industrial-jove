@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Role } from "./settings.server";
+import type { ClassRow } from "./classes.server";
+
+export type { ClassRow };
 
 async function ensureAll(sql: import("./podcasts.server").Sql) {
   const { ensureSettingsSchema } = await import("./settings.server");
