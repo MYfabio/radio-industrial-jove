@@ -10,15 +10,37 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CoordinadorRouteImport } from './routes/coordinador'
+import { Route as EspaiRouteImport } from './routes/espai'
+import { Route as EstudiRouteImport } from './routes/estudi'
 import { Route as MestreRouteImport } from './routes/mestre'
 import { Route as MurRouteImport } from './routes/mur'
+import { Route as PrivacitatRouteImport } from './routes/privacitat'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as TermesRouteImport } from './routes/termes'
 import { Route as ApiAiEditRouteImport } from './routes/api/ai-edit'
 import { Route as ApiPublicAudioIdRouteImport } from './routes/api/public/audio/$id'
 import { Route as ApiPublicCoverIdRouteImport } from './routes/api/public/cover/$id'
+import { Route as ApiPublicSoundIdRouteImport } from './routes/api/public/sound/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoordinadorRoute = CoordinadorRouteImport.update({
+  id: '/coordinador',
+  path: '/coordinador',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EspaiRoute = EspaiRouteImport.update({
+  id: '/espai',
+  path: '/espai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EstudiRoute = EstudiRouteImport.update({
+  id: '/estudi',
+  path: '/estudi',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MestreRoute = MestreRouteImport.update({
@@ -29,6 +51,21 @@ const MestreRoute = MestreRouteImport.update({
 const MurRoute = MurRouteImport.update({
   id: '/mur',
   path: '/mur',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacitatRoute = PrivacitatRouteImport.update({
+  id: '/privacitat',
+  path: '/privacitat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermesRoute = TermesRouteImport.update({
+  id: '/termes',
+  path: '/termes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAiEditRoute = ApiAiEditRouteImport.update({
@@ -46,66 +83,120 @@ const ApiPublicCoverIdRoute = ApiPublicCoverIdRouteImport.update({
   path: '/api/public/cover/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSoundIdRoute = ApiPublicSoundIdRouteImport.update({
+  id: '/api/public/sound/$id',
+  path: '/api/public/sound/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/coordinador': typeof CoordinadorRoute
+  '/espai': typeof EspaiRoute
+  '/estudi': typeof EstudiRoute
   '/mestre': typeof MestreRoute
   '/mur': typeof MurRoute
+  '/privacitat': typeof PrivacitatRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termes': typeof TermesRoute
   '/api/ai-edit': typeof ApiAiEditRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
+  '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/coordinador': typeof CoordinadorRoute
+  '/espai': typeof EspaiRoute
+  '/estudi': typeof EstudiRoute
   '/mestre': typeof MestreRoute
   '/mur': typeof MurRoute
+  '/privacitat': typeof PrivacitatRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termes': typeof TermesRoute
   '/api/ai-edit': typeof ApiAiEditRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
+  '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/coordinador': typeof CoordinadorRoute
+  '/espai': typeof EspaiRoute
+  '/estudi': typeof EstudiRoute
   '/mestre': typeof MestreRoute
   '/mur': typeof MurRoute
+  '/privacitat': typeof PrivacitatRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termes': typeof TermesRoute
   '/api/ai-edit': typeof ApiAiEditRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
+  '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/coordinador'
+    | '/espai'
+    | '/estudi'
     | '/mestre'
     | '/mur'
+    | '/privacitat'
+    | '/sitemap.xml'
+    | '/termes'
     | '/api/ai-edit'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
+    | '/api/public/sound/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/coordinador'
+    | '/espai'
+    | '/estudi'
     | '/mestre'
     | '/mur'
+    | '/privacitat'
+    | '/sitemap.xml'
+    | '/termes'
     | '/api/ai-edit'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
+    | '/api/public/sound/$id'
   id:
     | '__root__'
     | '/'
+    | '/coordinador'
+    | '/espai'
+    | '/estudi'
     | '/mestre'
     | '/mur'
+    | '/privacitat'
+    | '/sitemap.xml'
+    | '/termes'
     | '/api/ai-edit'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
+    | '/api/public/sound/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CoordinadorRoute: typeof CoordinadorRoute
+  EspaiRoute: typeof EspaiRoute
+  EstudiRoute: typeof EstudiRoute
   MestreRoute: typeof MestreRoute
   MurRoute: typeof MurRoute
+  PrivacitatRoute: typeof PrivacitatRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermesRoute: typeof TermesRoute
   ApiAiEditRoute: typeof ApiAiEditRoute
   ApiPublicAudioIdRoute: typeof ApiPublicAudioIdRoute
   ApiPublicCoverIdRoute: typeof ApiPublicCoverIdRoute
+  ApiPublicSoundIdRoute: typeof ApiPublicSoundIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -115,6 +206,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coordinador': {
+      id: '/coordinador'
+      path: '/coordinador'
+      fullPath: '/coordinador'
+      preLoaderRoute: typeof CoordinadorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/espai': {
+      id: '/espai'
+      path: '/espai'
+      fullPath: '/espai'
+      preLoaderRoute: typeof EspaiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/estudi': {
+      id: '/estudi'
+      path: '/estudi'
+      fullPath: '/estudi'
+      preLoaderRoute: typeof EstudiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mestre': {
@@ -129,6 +241,27 @@ declare module '@tanstack/react-router' {
       path: '/mur'
       fullPath: '/mur'
       preLoaderRoute: typeof MurRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacitat': {
+      id: '/privacitat'
+      path: '/privacitat'
+      fullPath: '/privacitat'
+      preLoaderRoute: typeof PrivacitatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termes': {
+      id: '/termes'
+      path: '/termes'
+      fullPath: '/termes'
+      preLoaderRoute: typeof TermesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ai-edit': {
@@ -152,17 +285,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCoverIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/sound/$id': {
+      id: '/api/public/sound/$id'
+      path: '/api/public/sound/$id'
+      fullPath: '/api/public/sound/$id'
+      preLoaderRoute: typeof ApiPublicSoundIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CoordinadorRoute: CoordinadorRoute,
+  EspaiRoute: EspaiRoute,
+  EstudiRoute: EstudiRoute,
   MestreRoute: MestreRoute,
   MurRoute: MurRoute,
+  PrivacitatRoute: PrivacitatRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermesRoute: TermesRoute,
   ApiAiEditRoute: ApiAiEditRoute,
   ApiPublicAudioIdRoute: ApiPublicAudioIdRoute,
   ApiPublicCoverIdRoute: ApiPublicCoverIdRoute,
+  ApiPublicSoundIdRoute: ApiPublicSoundIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
