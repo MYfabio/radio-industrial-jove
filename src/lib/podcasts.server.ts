@@ -15,6 +15,14 @@ export function getSql(): Sql {
     connect_timeout: 10,
     idle_timeout: 20,
     max_lifetime: 60 * 30,
+    // Connexió darrere d'un pooler: cal desactivar tant les "prepared
+    // statements" com la detecció automàtica de tipus en connectar
+    // (fetch_types fa una consulta pròpia que topa amb el mateix
+    // problema), perquè no hi ha manera que Postgres determini el tipus
+    // dels paràmetres i tot falla amb "could not determine data type of
+    // parameter", des d'abans fins i tot d'arribar a les nostres consultes.
+    prepare: false,
+    fetch_types: false,
   });
 }
 
