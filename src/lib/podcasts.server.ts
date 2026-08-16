@@ -110,17 +110,17 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
       title, "desc", cat, author, tags, transcript, dur, status,
       template, cover, audio_data, audio_mime, cover_data, cover_mime, publish_at, class_id, owner_user_id
     ) VALUES (
-      ${data.title}, ${data.desc}, ${data.cat}, ${data.author}, ${data.tags},
-      ${data.transcript}, ${Math.round(data.dur || 0)}, 'pendent',
-      ${data.template}, ${data.cover}, ${audio}, ${data.audioMime},
-      ${cover}, ${data.coverMime}, ${data.publishAt}, ${data.classId}::int, ${data.ownerId}::text
+      ${data.title}::text, ${data.desc}::text, ${data.cat}::text, ${data.author}::text, ${data.tags}::text[],
+      ${data.transcript}::text, ${Math.round(data.dur || 0)}, 'pendent',
+      ${data.template}::text, ${data.cover}::text, ${audio}::bytea, ${data.audioMime}::text,
+      ${cover}::bytea, ${data.coverMime}::text, ${data.publishAt}::timestamptz, ${data.classId}::int, ${data.ownerId}::text
     )
     RETURNING id
   `;
 
   const id = row!["id"] as number;
   const audioUrl = `${data.origin.replace(/\/$/, "")}/api/public/audio/${id}`;
-  await sql`UPDATE podcasts SET audio_url = ${audioUrl} WHERE id = ${id}`;
+  await sql`UPDATE podcasts SET audio_url = ${audioUrl}::text WHERE id = ${id}::int`;
   return { id, audio_url: audioUrl };
 }
 
@@ -201,7 +201,7 @@ export async function updatePodcastFields(
   await assertOwnerOrCoordinador(sql, id, requesterId, isCoordinador);
   await sql`
     UPDATE podcasts
-       SET title = ${data.title}, "desc" = ${data.desc}, cat = ${data.cat}, tags = ${data.tags}
+       SET title = ${data.title}::text, "desc" = ${data.desc}::text, cat = ${data.cat}::text, tags = ${data.tags}::text[]
      WHERE id = ${id}::int
   `;
   return { ok: true };
@@ -224,17 +224,17 @@ export async function reviewPodcast(
   await ensureSchema(sql);
   await sql`
     UPDATE podcasts
-       SET status = ${status},
-           teacher_note = ${teacherNote},
-           publish_at = ${publishAt}
-     WHERE id = ${id}
+       SET status = ${status}::text,
+           teacher_note = ${teacherNote}::text,
+           publish_at = ${publishAt}::timestamptz
+     WHERE id = ${id}::int
   `;
   return { ok: true };
 }
 
 export async function getAudio(sql: Sql, id: number) {
   const [row] = await sql`
-    SELECT audio_data, audio_mime, title FROM podcasts WHERE id = ${id}
+    SELECT audio_data, audio_mime, title FROM podcasts WHERE id = ${id}::int
   `;
   if (!row || !row["audio_data"]) return null;
   return {
@@ -245,7 +245,7 @@ export async function getAudio(sql: Sql, id: number) {
 }
 
 export async function getCover(sql: Sql, id: number) {
-  const [row] = await sql`SELECT cover_data, cover_mime FROM podcasts WHERE id = ${id}`;
+  const [row] = await sql`SELECT cover_data, cover_mime FROM podcasts WHERE id = ${id}::int`;
   if (!row || !row["cover_data"]) return null;
   return {
     data: row["cover_data"] as Uint8Array,
