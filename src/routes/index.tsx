@@ -12,19 +12,17 @@ import {
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
-import { SITE_NAME, SITE_TAGLINE, SITE_URL, SCHOOL_NAME } from "@/lib/siteConfig";
+import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/siteConfig";
 
 const JSON_LD = {
   "@context": "https://schema.org",
-  "@type": "EducationalOrganization",
+  "@type": "WebApplication",
   name: SITE_NAME,
+  applicationCategory: "EducationalApplication",
   description:
-    "Estudi de ràdio i pòdcast escolar en línia: gravació amb efectes, edició amb IA i mur de pòdcasts de classe.",
+    "Estudi de ràdio i pòdcast escolar en línia, obert a qualsevol centre educatiu: gravació amb efectes, edició amb IA i mur de pòdcasts de classe.",
   url: SITE_URL,
-  parentOrganization: {
-    "@type": "School",
-    name: SCHOOL_NAME,
-  },
+  isAccessibleForFree: true,
 };
 
 export const Route = createFileRoute("/")({
@@ -227,9 +225,7 @@ function LandingPage() {
         </section>
 
         <footer className="mt-16 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border py-6 text-xs text-muted-foreground">
-          <span>
-            {SITE_NAME} · {SCHOOL_NAME}
-          </span>
+          <span>{SITE_NAME} · Recurs educatiu obert</span>
           <Link to="/privacitat" className="hover:underline">
             Privacitat
           </Link>

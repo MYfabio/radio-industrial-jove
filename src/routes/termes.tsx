@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
-import { SITE_NAME, SCHOOL_NAME, SCHOOL_CONTACT_EMAIL } from "@/lib/siteConfig";
+import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/siteConfig";
 
 export const Route = createFileRoute("/termes")({
   head: () => ({
@@ -38,8 +38,8 @@ function TermsPage() {
           <section>
             <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-accent">Què és això</h2>
             <p>
-              {SITE_NAME} és un recurs educatiu de {SCHOOL_NAME} perquè l'alumnat pugui gravar, editar i publicar
-              pòdcasts escolars amb la supervisió del professorat.
+              {SITE_NAME} és un recurs educatiu obert, gratuït per a qualsevol centre, perquè l'alumnat pugui
+              gravar, editar i publicar pòdcasts escolars amb la supervisió del professorat.
             </p>
           </section>
 
@@ -77,8 +77,8 @@ function TermsPage() {
             <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-accent">Contacte</h2>
             <p>
               Per a qualsevol dubte sobre aquestes condicions, escriu a{" "}
-              <a href={`mailto:${SCHOOL_CONTACT_EMAIL}`} className="text-accent hover:underline">
-                {SCHOOL_CONTACT_EMAIL}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">
+                {SUPPORT_EMAIL}
               </a>
               . Consulta també la{" "}
               <Link to="/privacitat" className="text-accent hover:underline">

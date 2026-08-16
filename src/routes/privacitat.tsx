@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
-import { SITE_NAME, SCHOOL_NAME, SCHOOL_CONTACT_EMAIL } from "@/lib/siteConfig";
+import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/siteConfig";
 
 export const Route = createFileRoute("/privacitat")({
   head: () => ({
@@ -40,10 +40,11 @@ function PrivacyPage() {
               Qui és el responsable de les dades
             </h2>
             <p>
-              {SCHOOL_NAME} és qui gestiona {SITE_NAME}, l'estudi de ràdio i pòdcast de l'escola. Per qualsevol
-              dubte sobre les teves dades pots escriure a{" "}
-              <a href={`mailto:${SCHOOL_CONTACT_EMAIL}`} className="text-accent hover:underline">
-                {SCHOOL_CONTACT_EMAIL}
+              {SITE_NAME} és un recurs educatiu obert: el centre educatiu que fa servir aquesta eina amb la seva
+              classe n'és el responsable de les dades del seu alumnat. Per a qualsevol dubte tècnic sobre aquesta
+              instal·lació pots escriure a{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">
+                {SUPPORT_EMAIL}
               </a>
               .
             </p>
@@ -105,9 +106,10 @@ function PrivacyPage() {
             <p>
               Pots demanar en qualsevol moment veure, corregir o esborrar les teves dades i els teus pòdcasts.
               Des de "El meu espai" pots editar o esborrar els teus pòdcasts tu mateix/a. Per a qualsevol altra
-              petició (per exemple, esborrar el teu compte per complet), escriu a{" "}
-              <a href={`mailto:${SCHOOL_CONTACT_EMAIL}`} className="text-accent hover:underline">
-                {SCHOOL_CONTACT_EMAIL}
+              petició (per exemple, esborrar el teu compte per complet), demana-ho al teu centre educatiu o
+              escriu-nos a{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">
+                {SUPPORT_EMAIL}
               </a>
               .
             </p>
@@ -119,7 +121,7 @@ function PrivacyPage() {
             </h2>
             <p>
               L'ús d'aquesta eina a classe es fa sota la supervisió del professorat, dins del marc de consentiment
-              que l'escola ja gestiona amb les famílies per a les eines digitals del centre.
+              que cada centre educatiu gestiona amb les famílies per a les seves eines digitals.
             </p>
           </section>
 
