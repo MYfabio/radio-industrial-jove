@@ -15,10 +15,6 @@ export function getSql(): Sql {
     connect_timeout: 10,
     idle_timeout: 20,
     max_lifetime: 60 * 30,
-    // La connexió de Railway passa per un pooler que no admet "prepared
-    // statements": sense això, Postgres no pot determinar el tipus dels
-    // paràmetres i falla amb "could not determine data type of parameter".
-    prepare: false,
   });
 }
 

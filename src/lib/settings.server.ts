@@ -27,12 +27,12 @@ export async function ensureSettingsSchema(sql: Sql) {
     CREATE TABLE IF NOT EXISTS site_settings (
       id SMALLINT PRIMARY KEY DEFAULT 1,
       allow_external_sharing BOOLEAN NOT NULL DEFAULT FALSE,
-      allowed_email_domain TEXT NOT NULL DEFAULT ${DEFAULT_ALLOWED_DOMAIN}
+      allowed_email_domain TEXT NOT NULL DEFAULT ${DEFAULT_ALLOWED_DOMAIN}::text
     );
   `;
   await sql`
     INSERT INTO site_settings (id, allow_external_sharing, allowed_email_domain)
-    VALUES (1, FALSE, ${DEFAULT_ALLOWED_DOMAIN})
+    VALUES (1, FALSE, ${DEFAULT_ALLOWED_DOMAIN}::text)
     ON CONFLICT (id) DO NOTHING;
   `;
   await sql`
@@ -56,8 +56,8 @@ export async function updateSettings(
 ) {
   await sql`
     UPDATE site_settings
-       SET allow_external_sharing = ${data.allowExternalSharing},
-           allowed_email_domain = ${data.allowedEmailDomain}
+       SET allow_external_sharing = ${data.allowExternalSharing}::boolean,
+           allowed_email_domain = ${data.allowedEmailDomain}::text
      WHERE id = 1
   `;
 }
