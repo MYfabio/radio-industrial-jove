@@ -1,0 +1,15 @@
+node_modules/
+.output/
+.vinxi/
+dist/
+*.log
+.DS_Store
+
+# Aquest projecte fa servir Bun (bunfig.toml). Ignora lockfiles d'altres
+# gestors de paquets perquè no entrin en conflicte amb bun.lockb.
+package-lock.json
+yarn.lock
+
+.env
+.env.*
+!.env.example
