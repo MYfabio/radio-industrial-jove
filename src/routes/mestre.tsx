@@ -235,7 +235,7 @@ function ClassesPanel() {
       {justCreated && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3">
           <p className="text-sm">
-            <span className="font-semibold">Classe «justCreated.name» creada!</span> Dona aquest codi als
+            <span className="font-semibold">Classe «{justCreated.name}» creada!</span> Dona aquest codi als
             alumnes perquè s'hi uneixin (menú del seu compte → "Uneix-te a una classe"):
           </p>
           <button
