@@ -52,6 +52,8 @@ export const fetchMyPodcasts = createServerFn({ method: "GET" })
     const sql = getSql();
     try {
       return await listMine(sql, context.userId);
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }
@@ -74,6 +76,8 @@ export const updatePodcastFn = createServerFn({ method: "POST" })
       const profile = await getOrCreateProfile(sql, context.userId, email);
       const { id, ...fields } = data;
       return await updatePodcastFields(sql, id, context.userId, (profile.role as Role) === "coordinador", fields);
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }
@@ -95,6 +99,8 @@ export const deletePodcastFn = createServerFn({ method: "POST" })
       const email = (context.claims.email as string | undefined) ?? "";
       const profile = await getOrCreateProfile(sql, context.userId, email);
       return await deletePodcastRow(sql, data.id, context.userId, (profile.role as Role) === "coordinador");
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }
@@ -142,6 +148,8 @@ export const fetchApprovedPodcasts = createServerFn({ method: "GET" })
         allowExternalSharing: settings.allow_external_sharing,
         items,
       };
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }
@@ -152,6 +160,8 @@ export const fetchAllPodcasts = createServerFn({ method: "GET" }).handler(async 
   const sql = getSql();
   try {
     return await listAll(sql);
+  } catch (err) {
+    throw new Error(describePgError(err));
   } finally {
     await sql.end();
   }
@@ -171,6 +181,8 @@ export const reviewPodcastFn = createServerFn({ method: "POST" })
     const sql = getSql();
     try {
       return await reviewPodcast(sql, data.id, data.status, data.teacherNote, data.publishAt);
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }
