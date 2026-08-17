@@ -9,6 +9,8 @@ interface AuthState {
   session: Session | null;
   role: Role | null;
   classId: number | null;
+  schoolId: number | null;
+  isSuperAdmin: boolean;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -21,6 +23,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [classId, setClassId] = useState<number | null>(null);
+  const [schoolId, setSchoolId] = useState<number | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,16 +44,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!session?.user) {
       setRole(null);
       setClassId(null);
+      setSchoolId(null);
+      setIsSuperAdmin(false);
       return;
     }
     fetchMyProfile()
       .then((profile) => {
         setRole(profile.role as Role);
         setClassId(profile.class_id);
+        setSchoolId(profile.school_id);
+        setIsSuperAdmin(profile.is_super_admin);
       })
       .catch(() => {
         setRole(null);
         setClassId(null);
+        setSchoolId(null);
+        setIsSuperAdmin(false);
       });
   }, [session?.user]);
 
@@ -75,6 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         role,
         classId,
+        schoolId,
+        isSuperAdmin,
         loading,
         signInWithGoogle,
         signOut,

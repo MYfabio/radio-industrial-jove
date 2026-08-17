@@ -17,8 +17,11 @@ import { Route as MestreRouteImport } from './routes/mestre'
 import { Route as MurRouteImport } from './routes/mur'
 import { Route as PrivacitatRouteImport } from './routes/privacitat'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as TermesRouteImport } from './routes/termes'
 import { Route as ApiAiEditRouteImport } from './routes/api/ai-edit'
+import { Route as ClasseCodeRouteImport } from './routes/classe.$code'
+import { Route as EscolaSlugRouteImport } from './routes/escola.$slug'
 import { Route as ApiPublicAudioIdRouteImport } from './routes/api/public/audio/$id'
 import { Route as ApiPublicCoverIdRouteImport } from './routes/api/public/cover/$id'
 import { Route as ApiPublicSoundIdRouteImport } from './routes/api/public/sound/$id'
@@ -63,6 +66,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperadminRoute = SuperadminRouteImport.update({
+  id: '/superadmin',
+  path: '/superadmin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermesRoute = TermesRouteImport.update({
   id: '/termes',
   path: '/termes',
@@ -71,6 +79,16 @@ const TermesRoute = TermesRouteImport.update({
 const ApiAiEditRoute = ApiAiEditRouteImport.update({
   id: '/api/ai-edit',
   path: '/api/ai-edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClasseCodeRoute = ClasseCodeRouteImport.update({
+  id: '/classe/$code',
+  path: '/classe/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EscolaSlugRoute = EscolaSlugRouteImport.update({
+  id: '/escola/$slug',
+  path: '/escola/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAudioIdRoute = ApiPublicAudioIdRouteImport.update({
@@ -98,8 +116,11 @@ export interface FileRoutesByFullPath {
   '/mur': typeof MurRoute
   '/privacitat': typeof PrivacitatRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/superadmin': typeof SuperadminRoute
   '/termes': typeof TermesRoute
   '/api/ai-edit': typeof ApiAiEditRoute
+  '/classe/$code': typeof ClasseCodeRoute
+  '/escola/$slug': typeof EscolaSlugRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
   '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
@@ -113,8 +134,11 @@ export interface FileRoutesByTo {
   '/mur': typeof MurRoute
   '/privacitat': typeof PrivacitatRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/superadmin': typeof SuperadminRoute
   '/termes': typeof TermesRoute
   '/api/ai-edit': typeof ApiAiEditRoute
+  '/classe/$code': typeof ClasseCodeRoute
+  '/escola/$slug': typeof EscolaSlugRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
   '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
@@ -129,8 +153,11 @@ export interface FileRoutesById {
   '/mur': typeof MurRoute
   '/privacitat': typeof PrivacitatRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/superadmin': typeof SuperadminRoute
   '/termes': typeof TermesRoute
   '/api/ai-edit': typeof ApiAiEditRoute
+  '/classe/$code': typeof ClasseCodeRoute
+  '/escola/$slug': typeof EscolaSlugRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
   '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
@@ -146,8 +173,11 @@ export interface FileRouteTypes {
     | '/mur'
     | '/privacitat'
     | '/sitemap.xml'
+    | '/superadmin'
     | '/termes'
     | '/api/ai-edit'
+    | '/classe/$code'
+    | '/escola/$slug'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
     | '/api/public/sound/$id'
@@ -161,8 +191,11 @@ export interface FileRouteTypes {
     | '/mur'
     | '/privacitat'
     | '/sitemap.xml'
+    | '/superadmin'
     | '/termes'
     | '/api/ai-edit'
+    | '/classe/$code'
+    | '/escola/$slug'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
     | '/api/public/sound/$id'
@@ -176,8 +209,11 @@ export interface FileRouteTypes {
     | '/mur'
     | '/privacitat'
     | '/sitemap.xml'
+    | '/superadmin'
     | '/termes'
     | '/api/ai-edit'
+    | '/classe/$code'
+    | '/escola/$slug'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
     | '/api/public/sound/$id'
@@ -192,8 +228,11 @@ export interface RootRouteChildren {
   MurRoute: typeof MurRoute
   PrivacitatRoute: typeof PrivacitatRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SuperadminRoute: typeof SuperadminRoute
   TermesRoute: typeof TermesRoute
   ApiAiEditRoute: typeof ApiAiEditRoute
+  ClasseCodeRoute: typeof ClasseCodeRoute
+  EscolaSlugRoute: typeof EscolaSlugRoute
   ApiPublicAudioIdRoute: typeof ApiPublicAudioIdRoute
   ApiPublicCoverIdRoute: typeof ApiPublicCoverIdRoute
   ApiPublicSoundIdRoute: typeof ApiPublicSoundIdRoute
@@ -257,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/superadmin': {
+      id: '/superadmin'
+      path: '/superadmin'
+      fullPath: '/superadmin'
+      preLoaderRoute: typeof SuperadminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/termes': {
       id: '/termes'
       path: '/termes'
@@ -269,6 +315,20 @@ declare module '@tanstack/react-router' {
       path: '/api/ai-edit'
       fullPath: '/api/ai-edit'
       preLoaderRoute: typeof ApiAiEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/classe/$code': {
+      id: '/classe/$code'
+      path: '/classe/$code'
+      fullPath: '/classe/$code'
+      preLoaderRoute: typeof ClasseCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/escola/$slug': {
+      id: '/escola/$slug'
+      path: '/escola/$slug'
+      fullPath: '/escola/$slug'
+      preLoaderRoute: typeof EscolaSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/audio/$id': {
@@ -304,8 +364,11 @@ const rootRouteChildren: RootRouteChildren = {
   MurRoute: MurRoute,
   PrivacitatRoute: PrivacitatRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SuperadminRoute: SuperadminRoute,
   TermesRoute: TermesRoute,
   ApiAiEditRoute: ApiAiEditRoute,
+  ClasseCodeRoute: ClasseCodeRoute,
+  EscolaSlugRoute: EscolaSlugRoute,
   ApiPublicAudioIdRoute: ApiPublicAudioIdRoute,
   ApiPublicCoverIdRoute: ApiPublicCoverIdRoute,
   ApiPublicSoundIdRoute: ApiPublicSoundIdRoute,

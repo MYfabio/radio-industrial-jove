@@ -9,12 +9,15 @@ export type { ClassRow };
 async function ensureAll(sql: import("./podcasts.server").Sql) {
   const { ensureSettingsSchema } = await import("./settings.server");
   const { ensureClassesSchema } = await import("./classes.server");
+  const { ensureSchoolsSchema } = await import("./schools.server");
   await ensureSettingsSchema(sql);
+  await ensureSchoolsSchema(sql);
   await ensureClassesSchema(sql);
 }
 
 export interface CreateClassInput {
   name: string;
+  shareToSchool: boolean;
 }
 
 export const createClassFn = createServerFn({ method: "POST" })
@@ -34,7 +37,7 @@ export const createClassFn = createServerFn({ method: "POST" })
       }
       const name = data.name.trim();
       if (!name) throw new Error("Posa-hi un nom per a la classe.");
-      return await createClass(sql, context.userId, name);
+      return await createClass(sql, context.userId, name, profile.school_id, data.shareToSchool);
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {
@@ -74,6 +77,29 @@ export const joinClassFn = createServerFn({ method: "POST" })
       const cls = await joinClassByCode(sql, context.userId, data.code);
       if (!cls) throw new Error("Aquest codi no correspon a cap classe.");
       return cls;
+    } finally {
+      await sql.end();
+    }
+  });
+
+export interface ClassByCodeInput {
+  code: string;
+}
+
+/** Consulta pública (sense sessió) del nom d'una classe pel seu codi, per al mur /classe/$code. */
+export const fetchClassByCode = createServerFn({ method: "GET" })
+  .inputValidator((input: ClassByCodeInput) => input)
+  .handler(async ({ data }) => {
+    const { getSql } = await import("./podcasts.server");
+    const { getClassByInviteCode, ensureClassesSchema } = await import("./classes.server");
+    const sql = getSql();
+    try {
+      await ensureClassesSchema(sql);
+      const cls = await getClassByInviteCode(sql, data.code);
+      if (!cls) throw new Error("Aquest codi no correspon a cap classe.");
+      return cls;
+    } catch (err) {
+      throw new Error(describePgError(err));
     } finally {
       await sql.end();
     }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogOut, Settings, Users, User } from "lucide-react";
+import { LogOut, Settings, Users, User, ShieldCheck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "../lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -37,7 +37,7 @@ function GoogleIcon() {
 }
 
 export function AuthButton() {
-  const { user, role, classId, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, role, classId, isSuperAdmin, loading, signInWithGoogle, signOut } = useAuth();
   const [joinOpen, setJoinOpen] = useState(false);
 
   if (loading) {
@@ -82,6 +82,13 @@ export function AuthButton() {
             <DropdownMenuItem asChild>
               <Link to="/coordinador">
                 <Settings className="size-4" /> Panell de coordinador
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {isSuperAdmin && (
+            <DropdownMenuItem asChild>
+              <Link to="/superadmin">
+                <ShieldCheck className="size-4" /> Panell de super admin
               </Link>
             </DropdownMenuItem>
           )}

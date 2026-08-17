@@ -2,13 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Loader2, Settings, Check } from "lucide-react";
+import { Loader2, Settings, Check, UserPlus, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { useAuth } from "@/lib/auth";
-import { fetchPublicSettings, updateSiteSettingsFn } from "@/lib/settings.functions";
+import { fetchMySchoolFn, updateMySchoolFn, setDocentFn } from "@/lib/schools.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
 
 export const Route = createFileRoute("/coordinador")({
@@ -21,35 +21,63 @@ export const Route = createFileRoute("/coordinador")({
 function CoordinatorPanel() {
   const { user, role, loading: authLoading } = useAuth();
   const qc = useQueryClient();
-  const updateSettings = useServerFn(updateSiteSettingsFn);
+  const fetchMySchool = useServerFn(fetchMySchoolFn);
+  const updateSchool = useServerFn(updateMySchoolFn);
+  const setDocent = useServerFn(setDocentFn);
 
-  const { data: settings, isLoading } = useQuery({
-    queryKey: ["site-settings"],
-    queryFn: () => fetchPublicSettings(),
+  const {
+    data,
+    isLoading,
+    isError,
+    error: loadError,
+  } = useQuery({
+    queryKey: ["my-school"],
+    queryFn: () => fetchMySchool({}),
+    enabled: !!user && role === "coordinador",
   });
 
+  const [radioName, setRadioName] = useState("");
   const [allowSharing, setAllowSharing] = useState(false);
-  const [domain, setDomain] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [docentEmail, setDocentEmail] = useState("");
+  const [docentBusy, setDocentBusy] = useState(false);
+  const [docentMessage, setDocentMessage] = useState<string | null>(null);
+
   useEffect(() => {
-    if (settings) {
-      setAllowSharing(settings.allow_external_sharing);
-      setDomain(settings.allowed_email_domain);
+    if (data?.school) {
+      setRadioName(data.school.radio_name);
+      setAllowSharing(data.school.allow_external_sharing);
     }
-  }, [settings]);
+  }, [data]);
 
   const save = async () => {
     setSaving(true);
     setSaved(false);
     try {
-      await updateSettings({ data: { allowExternalSharing: allowSharing, allowedEmailDomain: domain.trim() } });
-      await qc.invalidateQueries({ queryKey: ["site-settings"] });
+      await updateSchool({ data: { radioName: radioName.trim(), allowExternalSharing: allowSharing } });
+      await qc.invalidateQueries({ queryKey: ["my-school"] });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 3000);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const addDocent = async () => {
+    if (!docentEmail.trim()) return;
+    setDocentBusy(true);
+    setDocentMessage(null);
+    try {
+      await setDocent({ data: { email: docentEmail.trim() } });
+      setDocentMessage(`${docentEmail.trim()} ja pot crear classes.`);
+      setDocentEmail("");
+      await qc.invalidateQueries({ queryKey: ["my-school"] });
+    } catch (e) {
+      setDocentMessage(e instanceof Error ? e.message : "No s'ha pogut afegir.");
+    } finally {
+      setDocentBusy(false);
     }
   };
 
@@ -96,7 +124,7 @@ function CoordinatorPanel() {
           </span>
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Panell de coordinador</h1>
-            <p className="text-sm text-muted-foreground">Configuració del centre.</p>
+            <p className="text-sm text-muted-foreground">Configuració de l'escola.</p>
           </div>
           <span className="ml-auto flex items-center gap-2">
             <ThemeToggle />
@@ -108,54 +136,105 @@ function CoordinatorPanel() {
           <p className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Carregant la configuració...
           </p>
+        ) : isError || !data ? (
+          <p className="text-sm text-destructive-foreground">
+            No s'ha pogut carregar l'escola:{" "}
+            {loadError instanceof Error ? loadError.message : "error desconegut"}
+          </p>
         ) : (
-          <section className="space-y-5 rounded-2xl border border-border bg-card p-5">
-            <div>
-              <label className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={allowSharing}
-                  onChange={(e) => setAllowSharing(e.target.checked)}
-                  className="mt-1 size-4"
+          <div className="space-y-6">
+            <section className="space-y-5 rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Radio className="size-4" /> Domini: <code>@{data.school.google_domain}</code>
+                {" · "}
+                <Link
+                  to="/escola/$slug"
+                  params={{ slug: data.school.slug }}
+                  className="text-accent hover:underline"
+                >
+                  Veure el mur de l'escola
+                </Link>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Nom de la ràdio
+                </label>
+                <Input
+                  value={radioName}
+                  onChange={(e) => setRadioName(e.target.value)}
+                  placeholder="Ràdio de l'escola"
+                  className="mt-1"
                 />
-                <span>
-                  <span className="block font-semibold">
-                    Permetre compartir pòdcasts fora de l'escola
-                  </span>
-                  <span className="block text-sm text-muted-foreground">
-                    Si ho actives, el mur de la classe és visible per a tothom i apareix un botó
-                    "Compartir" a cada pòdcast. Si ho deixes desactivat, el mur només el pot veure
-                    qui inicii sessió amb un compte de Google del domini del centre, per protegir
-                    els alumnes.
-                  </span>
-                </span>
-              </label>
-            </div>
+              </div>
 
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Domini de correu del centre
-              </label>
-              <Input
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                placeholder="escolaindustrial.org"
-                className="mt-1"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Només els comptes de Google que acabin en «@{domain || "domini"}» podran veure el
-                mur quan el compartir estigui desactivat.
+              <div>
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={allowSharing}
+                    onChange={(e) => setAllowSharing(e.target.checked)}
+                    className="mt-1 size-4"
+                  />
+                  <span>
+                    <span className="block font-semibold">
+                      Permetre compartir el mur de l'escola fora del centre
+                    </span>
+                    <span className="block text-sm text-muted-foreground">
+                      Si ho actives, el mur de l'escola és visible per a tothom. Si ho deixes
+                      desactivat, només el pot veure qui iniciï sessió amb un compte de Google del
+                      domini del centre.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button onClick={() => void save()} disabled={saving || !radioName.trim()}>
+                  {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+                  Desa
+                </Button>
+                {saved && <span className="text-sm font-semibold text-accent">Desat!</span>}
+              </div>
+            </section>
+
+            <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <UserPlus className="size-4" /> Docents de l'escola
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Dona permís de docent a algú del centre perquè pugui crear classes. Ha d'haver
+                iniciat sessió amb Google almenys un cop.
               </p>
-            </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  value={docentEmail}
+                  onChange={(e) => setDocentEmail(e.target.value)}
+                  placeholder="nom@escola.org"
+                  className="max-w-xs"
+                  onKeyDown={(e) => e.key === "Enter" && void addDocent()}
+                />
+                <Button size="sm" onClick={() => void addDocent()} disabled={docentBusy || !docentEmail.trim()}>
+                  {docentBusy ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+                  Fes-lo docent
+                </Button>
+              </div>
+              {docentMessage && <p className="text-sm text-muted-foreground">{docentMessage}</p>}
 
-            <div className="flex items-center gap-3">
-              <Button onClick={() => void save()} disabled={saving || !domain.trim()}>
-                {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                Desar
-              </Button>
-              {saved && <span className="text-sm font-semibold text-accent">Desat!</span>}
-            </div>
-          </section>
+              {data.members.length > 0 && (
+                <ul className="space-y-1.5 text-sm">
+                  {data.members.map((m) => (
+                    <li key={m.auth_user_id} className="flex items-center justify-between gap-2">
+                      <span className="truncate">{m.email}</span>
+                      <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {m.role}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         )}
       </div>
     </main>

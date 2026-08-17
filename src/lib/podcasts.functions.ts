@@ -113,40 +113,63 @@ export interface ApprovedPodcastsResult {
   items: PodcastRow[];
 }
 
-/**
- * El mur és públic només si el coordinador ha activat "compartir fora de
- * l'escola". Si no, cal haver iniciat sessió amb un correu del domini del
- * centre per protegir els alumnes.
- */
-export const fetchApprovedPodcasts = createServerFn({ method: "GET" })
-  .middleware([optionalSupabaseAuth])
-  .handler(async ({ context }): Promise<ApprovedPodcastsResult> => {
+/** Mur obert (/mur): pòdcasts gravats fora de qualsevol classe, sempre públics. */
+export const fetchApprovedPodcasts = createServerFn({ method: "GET" }).handler(
+  async (): Promise<ApprovedPodcastsResult> => {
     const { getSql, listApproved } = await import("./podcasts.server");
-    const { ensureSettingsSchema, getSettings } = await import("./settings.server");
     const sql = getSql();
     try {
-      await ensureSettingsSchema(sql);
-      const settings = await getSettings(sql);
+      const items = await listApproved(sql);
+      return { locked: false, allowedDomain: null, allowExternalSharing: true, items };
+    } catch (err) {
+      throw new Error(describePgError(err));
+    } finally {
+      await sql.end();
+    }
+  },
+);
 
-      if (!settings.allow_external_sharing) {
-        const domain = settings.allowed_email_domain.toLowerCase();
+export interface SchoolWallInput {
+  slug: string;
+}
+
+/**
+ * Mur d'una escola (/escola/$slug). Si el coordinador no ha activat
+ * "compartir fora de l'escola", cal haver iniciat sessió amb un correu del
+ * domini de l'escola per veure'l.
+ */
+export const fetchSchoolWall = createServerFn({ method: "GET" })
+  .middleware([optionalSupabaseAuth])
+  .inputValidator((input: SchoolWallInput) => input)
+  .handler(async ({ context, data }): Promise<ApprovedPodcastsResult & { radioName: string }> => {
+    const { getSql, listApprovedForSchool } = await import("./podcasts.server");
+    const { getSchoolBySlug } = await import("./schools.server");
+    const sql = getSql();
+    try {
+      const school = await getSchoolBySlug(sql, data.slug);
+      if (!school) throw new Error("Aquesta escola no existeix.");
+
+      if (!school.allow_external_sharing && school.google_domain) {
+        const domain = school.google_domain.toLowerCase();
         const email = context.email?.toLowerCase() ?? "";
         if (!email.endsWith(`@${domain}`)) {
           return {
             locked: true,
-            allowedDomain: settings.allowed_email_domain,
+            allowedDomain: school.google_domain,
             allowExternalSharing: false,
             items: [],
+            radioName: school.radio_name,
           };
         }
       }
 
-      const items = await listApproved(sql);
+      const items = await listApprovedForSchool(sql, school.id);
       return {
         locked: false,
-        allowedDomain: settings.allowed_email_domain,
-        allowExternalSharing: settings.allow_external_sharing,
+        allowedDomain: school.google_domain,
+        allowExternalSharing: school.allow_external_sharing,
         items,
+        radioName: school.radio_name,
       };
     } catch (err) {
       throw new Error(describePgError(err));
@@ -155,17 +178,50 @@ export const fetchApprovedPodcasts = createServerFn({ method: "GET" })
     }
   });
 
-export const fetchAllPodcasts = createServerFn({ method: "GET" }).handler(async () => {
-  const { getSql, listAll } = await import("./podcasts.server");
-  const sql = getSql();
-  try {
-    return await listAll(sql);
-  } catch (err) {
-    throw new Error(describePgError(err));
-  } finally {
-    await sql.end();
-  }
-});
+export interface ClassWallInput {
+  code: string;
+}
+
+/** Mur d'una classe (/classe/$code): sempre accessible amb el codi, sense cap altre filtre. */
+export const fetchClassWall = createServerFn({ method: "GET" })
+  .inputValidator((input: ClassWallInput) => input)
+  .handler(async ({ data }): Promise<{ items: PodcastRow[]; className: string }> => {
+    const { getSql, listApprovedForClass } = await import("./podcasts.server");
+    const { getClassByInviteCode } = await import("./classes.server");
+    const sql = getSql();
+    try {
+      const cls = await getClassByInviteCode(sql, data.code);
+      if (!cls) throw new Error("Aquest codi no correspon a cap classe.");
+      const items = await listApprovedForClass(sql, cls.id);
+      return { items, className: cls.name };
+    } catch (err) {
+      throw new Error(describePgError(err));
+    } finally {
+      await sql.end();
+    }
+  });
+
+/** Panell del mestre: pòdcasts de les classes pròpies (i de tota l'escola si ets coordinador). */
+export const fetchAllPodcasts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getSql, listAll } = await import("./podcasts.server");
+    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const sql = getSql();
+    try {
+      await ensureSettingsSchema(sql);
+      const email = (context.claims.email as string | undefined) ?? "";
+      const profile = await getOrCreateProfile(sql, context.userId, email);
+      if ((profile.role as Role) === "alumne") {
+        throw new Error("Aquest panell només és per a docents o coordinadors.");
+      }
+      return await listAll(sql, context.userId, (profile.role as Role) === "coordinador", profile.school_id);
+    } catch (err) {
+      throw new Error(describePgError(err));
+    } finally {
+      await sql.end();
+    }
+  });
 
 export interface ReviewInput {
   id: number;

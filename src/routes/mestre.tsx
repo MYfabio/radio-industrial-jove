@@ -4,7 +4,7 @@ import { AuthButton } from "@/components/AuthButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { GraduationCap, Loader2, Check, X, Clock, Copy, Plus, Users } from "lucide-react";
+import { GraduationCap, Loader2, Check, X, Clock, Copy, Plus, Users, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -166,11 +166,12 @@ function Row({ p, onSaved }: { p: PodcastRow; onSaved: () => void }) {
 }
 
 function ClassesPanel() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, schoolId, loading: authLoading } = useAuth();
   const create = useServerFn(createClassFn);
   const list = useServerFn(fetchMyClasses);
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [shareToSchool, setShareToSchool] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -199,8 +200,9 @@ function ClassesPanel() {
     setError(null);
     setJustCreated(null);
     try {
-      const created = await create({ data: { name: name.trim() } });
+      const created = await create({ data: { name: name.trim(), shareToSchool } });
       setName("");
+      setShareToSchool(false);
       setJustCreated(created);
       // Mostrem el codi a l'instant, sense esperar el refetch del servidor.
       qc.setQueryData<ClassRow[]>(["classes", "meves"], (old) => [created, ...(old ?? [])]);
@@ -271,16 +273,32 @@ function ClassesPanel() {
           {classes.map((c) => (
             <div
               key={c.id}
-              className="flex items-center justify-between gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2"
             >
-              <span className="min-w-0 truncate text-sm font-semibold">{c.name}</span>
-              <button
-                onClick={() => void copyCode(c.id, c.invite_code)}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 font-mono text-xs font-bold tracking-widest hover:bg-accent/10"
-              >
-                {copiedId === c.id ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
-                {c.invite_code}
-              </button>
+              <span className="min-w-0 truncate text-sm font-semibold">
+                {c.name}
+                {c.share_to_school && (
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                    <Radio className="size-2.5" /> Escola
+                  </span>
+                )}
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <Link
+                  to="/classe/$code"
+                  params={{ code: c.invite_code }}
+                  className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold hover:bg-accent/10"
+                >
+                  Mur
+                </Link>
+                <button
+                  onClick={() => void copyCode(c.id, c.invite_code)}
+                  className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 font-mono text-xs font-bold tracking-widest hover:bg-accent/10"
+                >
+                  {copiedId === c.id ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
+                  {c.invite_code}
+                </button>
+              </span>
             </div>
           ))}
         </div>
@@ -306,21 +324,71 @@ function ClassesPanel() {
           Crea una classe
         </Button>
       </div>
+      {schoolId && (
+        <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={shareToSchool}
+            onChange={(e) => setShareToSchool(e.target.checked)}
+            className="size-4"
+          />
+          Comparteix els pòdcasts aprovats d'aquesta classe al mur de l'escola
+        </label>
+      )}
       {error && <p className="mt-2 text-sm text-destructive-foreground">{error}</p>}
     </section>
   );
 }
 
 function TeacherPanel() {
+  const { user, role, loading: authLoading } = useAuth();
   const qc = useQueryClient();
   const list = useServerFn(fetchAllPodcasts);
-  const { data, isLoading } = useQuery({ queryKey: ["podcasts", "tots"], queryFn: () => list({}) });
+  const { data, isLoading } = useQuery({
+    queryKey: ["podcasts", "tots"],
+    queryFn: () => list({}),
+    enabled: !!user && role !== "alumne",
+  });
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["podcasts"] });
   };
 
   const pending = (data ?? []).filter((p) => p.status === "pendent");
   const rest = (data ?? []).filter((p) => p.status !== "pendent");
+
+  if (authLoading) {
+    return (
+      <main className="studio-bg flex min-h-screen items-center justify-center px-4">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="studio-bg flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-lg font-semibold">Cal iniciar sessió per veure aquest panell.</p>
+        <AuthButton />
+        <Link to="/estudi" className="text-sm text-accent hover:underline">
+          Torna a l'estudi
+        </Link>
+      </main>
+    );
+  }
+
+  if (role === "alumne") {
+    return (
+      <main className="studio-bg flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-lg font-semibold">Accés restringit</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Aquest panell només és per a docents o coordinadors.
+        </p>
+        <Link to="/estudi" className="text-sm text-accent hover:underline">
+          Torna a l'estudi
+        </Link>
+      </main>
+    );
+  }
 
   return (
     <main className="studio-bg min-h-screen px-4 py-10">

@@ -77,11 +77,15 @@ export interface PodcastRow {
   has_cover_image?: boolean;
   class_id: number | null;
   class_name: string | null;
+  school_id: number | null;
+  share_to_school: boolean | null;
+  class_owner_id: string | null;
 }
 
 const LIST_COLUMNS = `p.id, p.title, p."desc", p.cat, p.author, p.tags, p.audio_url, p.transcript,
   p.dur, p.status, p.cover, p.template, p.teacher_note, p.publish_at, p.created_at,
-  (p.cover_data IS NOT NULL) AS has_cover_image, p.class_id, c.name AS class_name`;
+  (p.cover_data IS NOT NULL) AS has_cover_image, p.class_id, c.name AS class_name,
+  c.school_id, c.share_to_school, c.created_by AS class_owner_id`;
 const LIST_FROM = `podcasts p LEFT JOIN classes c ON c.id = p.class_id`;
 
 export interface NewPodcast {
@@ -135,26 +139,66 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
   return { id, audio_url: audioUrl };
 }
 
-/** Mur públic: només aprovats i amb la data de publicació ja arribada. */
+const APPROVED_WHERE = `p.status = 'aprovat' AND (p.publish_at IS NULL OR p.publish_at <= now())`;
+
+/** Mur obert (/mur): pòdcasts sense classe (gravats fora de qualsevol escola). */
 export async function listApproved(sql: Sql) {
   await ensureSchema(sql);
   await ensureClassesSchema(sql);
   const rows = await sql.unsafe(`
     SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
-    WHERE p.status = 'aprovat'
-      AND (p.publish_at IS NULL OR p.publish_at <= now())
+    WHERE ${APPROVED_WHERE} AND p.class_id IS NULL
     ORDER BY COALESCE(p.publish_at, p.created_at) DESC
     LIMIT 200
   `);
   return rows as unknown as PodcastRow[];
 }
 
-/** Panell del mestre: tot, del més nou al més vell. */
-export async function listAll(sql: Sql) {
+/** Mur d'una escola (/escola/$slug): classes que han triat compartir-hi. */
+export async function listApprovedForSchool(sql: Sql, schoolId: number) {
   await ensureSchema(sql);
   await ensureClassesSchema(sql);
   const rows = await sql.unsafe(`
-    SELECT ${LIST_COLUMNS} FROM ${LIST_FROM} ORDER BY p.created_at DESC LIMIT 300
+    SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
+    WHERE ${APPROVED_WHERE} AND c.school_id = ${sqlInt(schoolId)} AND c.share_to_school = TRUE
+    ORDER BY COALESCE(p.publish_at, p.created_at) DESC
+    LIMIT 200
+  `);
+  return rows as unknown as PodcastRow[];
+}
+
+/** Mur d'una classe (/classe/$code): sempre accessible amb el codi, sense cap altre filtre. */
+export async function listApprovedForClass(sql: Sql, classId: number) {
+  await ensureSchema(sql);
+  await ensureClassesSchema(sql);
+  const rows = await sql.unsafe(`
+    SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
+    WHERE ${APPROVED_WHERE} AND p.class_id = ${sqlInt(classId)}
+    ORDER BY COALESCE(p.publish_at, p.created_at) DESC
+    LIMIT 200
+  `);
+  return rows as unknown as PodcastRow[];
+}
+
+/**
+ * Panell del mestre: pòdcasts sense classe (oberts a qualsevol docent),
+ * els de les classes pròpies, i —si qui demana és coordinador— els de
+ * qualsevol classe de la seva escola.
+ */
+export async function listAll(
+  sql: Sql,
+  requesterId: string,
+  isCoordinador: boolean,
+  schoolId: number | null,
+) {
+  await ensureSchema(sql);
+  await ensureClassesSchema(sql);
+  const scopeParts = [`p.class_id IS NULL`, `c.created_by = ${sqlText(requesterId)}`];
+  if (isCoordinador && schoolId !== null) scopeParts.push(`c.school_id = ${sqlInt(schoolId)}`);
+  const rows = await sql.unsafe(`
+    SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
+    WHERE ${scopeParts.join(" OR ")}
+    ORDER BY p.created_at DESC LIMIT 300
   `);
   return rows as unknown as PodcastRow[];
 }
