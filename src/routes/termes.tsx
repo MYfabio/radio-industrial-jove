@@ -83,6 +83,10 @@ function TermsPage() {
               . Consulta també la{" "}
               <Link to="/privacitat" className="text-accent hover:underline">
                 política de privacitat
+              </Link>{" "}
+              i la pàgina d'{" "}
+              <Link to="/ajuda" className="text-accent hover:underline">
+                ajuda
               </Link>
               .
             </p>
