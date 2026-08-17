@@ -35,6 +35,7 @@ const FILE_EFFECTS: Partial<Record<EffectId, string>> = {
   whoosh: "/freesound_community-paisaje-sonoro-uem-pisasdas-43442.mp3",
   risa: "/artificiallyinspired-90s-sitcom-laugh-track-v2-353986.mp3",
   pedo: "/apebble-fart-5-228245.mp3",
+  aplausos: "/driken5482-applause-cheer-236786.mp3",
 };
 
 const bufferCache = new Map<string, Promise<AudioBuffer>>();
