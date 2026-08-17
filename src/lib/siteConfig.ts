@@ -7,7 +7,7 @@ export const SITE_NAME = "Ràdio Escolar";
 export const SITE_TAGLINE = "Estudi de ràdio per a alumnes";
 
 /** Adreça pública del lloc (per a SEO: canonical, og:url, sitemap). */
-export const SITE_URL = "https://radio-industrial-jove-production.up.railway.app";
+export const SITE_URL = "https://www.radioescolar.cat";
 
 /**
  * Recurs educatiu obert: no pertany a cap escola en concret, qualsevol
