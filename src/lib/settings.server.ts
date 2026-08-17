@@ -65,41 +65,60 @@ export async function acceptTerms(sql: Sql, userId: string): Promise<void> {
   );
 }
 
-export async function getOrCreateProfile(sql: Sql, userId: string, email: string): Promise<ProfileRow> {
-  const [existing] = await sql.unsafe(
-    `SELECT auth_user_id, email, role, class_id, school_id, terms_accepted_at FROM profiles WHERE auth_user_id = ${sqlText(userId)}`,
-  );
-  if (existing) return withComputed(existing as Record<string, unknown>);
-
-  const { getOrCreateSchoolForDomain } = await import("./schools.server");
+/** Troba (creant-la si cal, per al domini històric) l'escola d'aquest correu i si n'és el coordinador. */
+async function resolveSchool(
+  sql: Sql,
+  email: string,
+): Promise<{ schoolId: number | null; isCoordinador: boolean }> {
   const domain = email.split("@")[1]?.toLowerCase() ?? "";
-  let schoolId: number | null = null;
-  let role: Role = "alumne";
-
-  if (isSuperAdminEmail(email)) {
-    role = "coordinador";
-  }
+  if (!domain) return { schoolId: null, isCoordinador: false };
 
   if (domain === DEFAULT_ALLOWED_DOMAIN) {
     // Compatibilitat: el domini històric del projecte sempre té una escola,
     // encara que ningú l'hagi donada d'alta explícitament des del panell de
     // super admin.
+    const { getOrCreateSchoolForDomain } = await import("./schools.server");
     const school = await getOrCreateSchoolForDomain(sql, domain, {
       name: SITE_NAME,
       radioName: SITE_NAME,
       coordinadorEmail: SUPER_ADMIN_EMAIL,
       createdBy: SUPER_ADMIN_EMAIL,
     });
-    schoolId = school.id;
-    if (email.toLowerCase() === (school.coordinador_email ?? "").toLowerCase()) role = "coordinador";
-  } else if (domain) {
-    const { getSchoolByDomain } = await import("./schools.server");
-    const school = await getSchoolByDomain(sql, domain);
-    if (school) {
-      schoolId = school.id;
-      if (email.toLowerCase() === (school.coordinador_email ?? "").toLowerCase()) role = "coordinador";
-    }
+    return { schoolId: school.id, isCoordinador: email.toLowerCase() === (school.coordinador_email ?? "").toLowerCase() };
   }
+
+  const { getSchoolByDomain } = await import("./schools.server");
+  const school = await getSchoolByDomain(sql, domain);
+  if (!school) return { schoolId: null, isCoordinador: false };
+  return { schoolId: school.id, isCoordinador: email.toLowerCase() === (school.coordinador_email ?? "").toLowerCase() };
+}
+
+export async function getOrCreateProfile(sql: Sql, userId: string, email: string): Promise<ProfileRow> {
+  const [existing] = await sql.unsafe(
+    `SELECT auth_user_id, email, role, class_id, school_id, terms_accepted_at FROM profiles WHERE auth_user_id = ${sqlText(userId)}`,
+  );
+  if (existing) {
+    const profile = withComputed(existing as Record<string, unknown>);
+    // Perfils creats abans d'existir les escoles es van quedar amb school_id
+    // buit per sempre: aquí els l'omplim en la primera petició que arribi.
+    if (profile.school_id === null) {
+      const { schoolId, isCoordinador } = await resolveSchool(sql, email);
+      if (schoolId !== null) {
+        const promote = isCoordinador && profile.role !== "coordinador";
+        const [updated] = await sql.unsafe(`
+          UPDATE profiles
+             SET school_id = ${sqlInt(schoolId)}${promote ? `, role = ${sqlText("coordinador")}` : ""}
+           WHERE auth_user_id = ${sqlText(userId)}
+           RETURNING auth_user_id, email, role, class_id, school_id, terms_accepted_at
+        `);
+        return withComputed(updated as Record<string, unknown>);
+      }
+    }
+    return profile;
+  }
+
+  const { schoolId, isCoordinador } = await resolveSchool(sql, email);
+  const role: Role = isSuperAdminEmail(email) || isCoordinador ? "coordinador" : "alumne";
 
   const [created] = await sql.unsafe(`
     INSERT INTO profiles (auth_user_id, email, role, school_id)
