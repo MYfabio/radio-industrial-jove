@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Pause, Play, Square, Download, Wand2, Loader2, Sparkles, Upload, Trash2, ListChecks, Music, Users, FileAudio, Headphones, GraduationCap, Printer } from "lucide-react";
+import { Mic, Pause, Play, Square, Download, Wand2, Loader2, Sparkles, Upload, Trash2, ListChecks, Music, Users, FileAudio, Headphones, GraduationCap, Printer, ExternalLink, Palette } from "lucide-react";
 import { Waveform } from "@/components/Waveform";
 import { LevelMeter } from "@/components/LevelMeter";
 import { PublishPodcast } from "@/components/PublishPodcast";
@@ -10,7 +10,7 @@ import { Logo } from "@/components/Logo";
 
 import { Button } from "@/components/ui/button";
 import { EFFECTS, playEffect, type EffectId } from "@/lib/soundEffects";
-import { SITE_NAME } from "@/lib/siteConfig";
+import { SITE_NAME, CANVA_COVER_TEMPLATE_URL } from "@/lib/siteConfig";
 import { autoEdit, type AutoEditResult } from "@/lib/autoEdit";
 import { BG_TRACKS, startBackground, type BgHandle } from "@/lib/bgMusic";
 import { encodeMp3, safeFileName } from "@/lib/mp3";
@@ -634,6 +634,36 @@ function RadioStudio() {
                 </div>
               </section>
             )}
+
+            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Recursos
+              </h2>
+              <div className="mt-3 flex flex-col gap-2">
+                <a
+                  href={CANVA_COVER_TEMPLATE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 p-2.5 text-sm font-semibold transition-transform hover:scale-[1.01] active:scale-95"
+                >
+                  <Palette className="size-4 text-accent" /> Plantilla de caràtula (Canva)
+                  <ExternalLink className="ml-auto size-3.5 text-muted-foreground" />
+                </a>
+                <a
+                  href="https://freesound.org/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 p-2.5 text-sm font-semibold transition-transform hover:scale-[1.01] active:scale-95"
+                >
+                  <Music className="size-4 text-accent" /> Busca sons i efectes (Freesound)
+                  <ExternalLink className="ml-auto size-3.5 text-muted-foreground" />
+                </a>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                A Freesound tria sons amb llicència CC0 (domini públic) o comprova que la llicència
+                permeti el teu ús, i que el so sigui adequat per a classe.
+              </p>
+            </section>
           </div>
 
           <div
