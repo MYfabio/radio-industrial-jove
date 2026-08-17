@@ -4,11 +4,14 @@ import { describePgError } from "./pgError";
 
 async function requireSuperAdmin(context: { userId: string; claims: Record<string, unknown> }) {
   const { getSql } = await import("./podcasts.server");
-  const { getOrCreateProfile, isSuperAdminEmail } = await import("./settings.server");
+  const { ensureSettingsSchema, getOrCreateProfile, isSuperAdminEmail } = await import("./settings.server");
+  const { ensureSchoolsSchema } = await import("./schools.server");
   const sql = getSql();
   try {
     const email = (context.claims["email"] as string | undefined) ?? "";
     if (!isSuperAdminEmail(email)) throw new Error("Aquest panell només és per al super admin.");
+    await ensureSettingsSchema(sql);
+    await ensureSchoolsSchema(sql);
     await getOrCreateProfile(sql, context.userId, email);
   } finally {
     await sql.end();
@@ -69,10 +72,13 @@ export const fetchSchoolsFn = createServerFn({ method: "GET" })
 
 async function requireCoordinadorSchoolId(context: { userId: string; claims: Record<string, unknown> }) {
   const { getSql } = await import("./podcasts.server");
-  const { getOrCreateProfile } = await import("./settings.server");
+  const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+  const { ensureSchoolsSchema } = await import("./schools.server");
   const sql = getSql();
   try {
     const email = (context.claims["email"] as string | undefined) ?? "";
+    await ensureSettingsSchema(sql);
+    await ensureSchoolsSchema(sql);
     const profile = await getOrCreateProfile(sql, context.userId, email);
     if (profile.role !== "coordinador") throw new Error("Aquest panell només és per al coordinador o coordinadora.");
     if (profile.school_id === null) throw new Error("El teu compte no està vinculat a cap escola.");
