@@ -14,7 +14,7 @@ export const SITE_URL = "https://www.radioescolar.cat";
  * centre el pot fer servir. Aquest correu és només el contacte tècnic
  * d'aquesta instal·lació.
  */
-export const SUPPORT_EMAIL = "fabio.martinez@escolaindustrial.org";
+export const SUPPORT_EMAIL = "info@radioescolar.cat";
 
 /** Plantilla de Canva per fer caràtules de pòdcast (mateix disseny per a tota la classe). */
 export const CANVA_COVER_TEMPLATE_URL = "https://www.canva.com/d/XLXcBPP7gjLNKz0";
