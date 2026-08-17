@@ -25,6 +25,7 @@ export interface ProfileRow {
   class_id: number | null;
   school_id: number | null;
   is_super_admin: boolean;
+  terms_accepted_at: string | null;
 }
 
 export function isSuperAdminEmail(email: string): boolean {
@@ -41,6 +42,7 @@ export async function ensureSettingsSchema(sql: Sql) {
     );
   `);
   await sql.unsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS school_id INTEGER`);
+  await sql.unsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ`);
 }
 
 function withComputed(row: Record<string, unknown>): ProfileRow {
@@ -52,12 +54,20 @@ function withComputed(row: Record<string, unknown>): ProfileRow {
     class_id: (row["class_id"] as number | null) ?? null,
     school_id: (row["school_id"] as number | null) ?? null,
     is_super_admin: isSuperAdminEmail(email),
+    terms_accepted_at: (row["terms_accepted_at"] as string | null) ?? null,
   };
+}
+
+/** Docents i coordinadors han d'acceptar les condicions d'ús abans d'accedir als seus panells. */
+export async function acceptTerms(sql: Sql, userId: string): Promise<void> {
+  await sql.unsafe(
+    `UPDATE profiles SET terms_accepted_at = now() WHERE auth_user_id = ${sqlText(userId)}`,
+  );
 }
 
 export async function getOrCreateProfile(sql: Sql, userId: string, email: string): Promise<ProfileRow> {
   const [existing] = await sql.unsafe(
-    `SELECT auth_user_id, email, role, class_id, school_id FROM profiles WHERE auth_user_id = ${sqlText(userId)}`,
+    `SELECT auth_user_id, email, role, class_id, school_id, terms_accepted_at FROM profiles WHERE auth_user_id = ${sqlText(userId)}`,
   );
   if (existing) return withComputed(existing as Record<string, unknown>);
 
@@ -95,7 +105,7 @@ export async function getOrCreateProfile(sql: Sql, userId: string, email: string
     INSERT INTO profiles (auth_user_id, email, role, school_id)
     VALUES (${sqlText(userId)}, ${sqlText(email)}, ${sqlText(role)}, ${sqlInt(schoolId)})
     ON CONFLICT (auth_user_id) DO UPDATE SET email = EXCLUDED.email
-    RETURNING auth_user_id, email, role, class_id, school_id
+    RETURNING auth_user_id, email, role, class_id, school_id, terms_accepted_at
   `);
   return withComputed(created as Record<string, unknown>);
 }

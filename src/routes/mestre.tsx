@@ -13,6 +13,7 @@ import { createClassFn, fetchMyClasses, type ClassRow } from "@/lib/classes.func
 import { SITE_NAME } from "@/lib/siteConfig";
 import { notifyPodcastsChanged } from "@/lib/podcastSync";
 import { useAuth } from "@/lib/auth";
+import { AcceptTermsGate } from "@/components/AcceptTermsGate";
 
 
 export const Route = createFileRoute("/mestre")({
@@ -391,6 +392,7 @@ function TeacherPanel() {
   }
 
   return (
+    <AcceptTermsGate>
     <main className="studio-bg min-h-screen px-4 py-10">
       <div className="mx-auto w-full max-w-3xl xl:max-w-5xl 2xl:max-w-6xl">
         <header className="mb-8 flex flex-wrap items-center gap-3">
@@ -457,5 +459,6 @@ function TeacherPanel() {
         )}
       </div>
     </main>
+    </AcceptTermsGate>
   );
 }

@@ -19,3 +19,18 @@ export const fetchMyProfile = createServerFn({ method: "GET" })
       await sql.end();
     }
   });
+
+export const acceptTermsFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getSql } = await import("./podcasts.server");
+    const { ensureSettingsSchema, acceptTerms } = await import("./settings.server");
+    const sql = getSql();
+    try {
+      await ensureSettingsSchema(sql);
+      await acceptTerms(sql, context.userId);
+      return { ok: true };
+    } finally {
+      await sql.end();
+    }
+  });

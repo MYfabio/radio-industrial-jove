@@ -10,6 +10,7 @@ import { AuthButton } from "@/components/AuthButton";
 import { useAuth } from "@/lib/auth";
 import { fetchMySchoolFn, updateMySchoolFn, setDocentFn } from "@/lib/schools.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
+import { AcceptTermsGate } from "@/components/AcceptTermsGate";
 
 export const Route = createFileRoute("/coordinador")({
   head: () => ({
@@ -116,6 +117,7 @@ function CoordinatorPanel() {
   }
 
   return (
+    <AcceptTermsGate>
     <main className="studio-bg min-h-screen px-4 py-10">
       <div className="mx-auto w-full max-w-2xl xl:max-w-4xl 2xl:max-w-5xl">
         <header className="mb-8 flex flex-wrap items-center gap-3">
@@ -238,5 +240,6 @@ function CoordinatorPanel() {
         )}
       </div>
     </main>
+    </AcceptTermsGate>
   );
 }

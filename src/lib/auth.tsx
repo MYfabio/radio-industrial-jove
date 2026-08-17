@@ -11,6 +11,7 @@ interface AuthState {
   classId: number | null;
   schoolId: number | null;
   isSuperAdmin: boolean;
+  termsAcceptedAt: string | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [classId, setClassId] = useState<number | null>(null);
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [termsAcceptedAt, setTermsAcceptedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setClassId(null);
       setSchoolId(null);
       setIsSuperAdmin(false);
+      setTermsAcceptedAt(null);
       return;
     }
     fetchMyProfile()
@@ -54,12 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setClassId(profile.class_id);
         setSchoolId(profile.school_id);
         setIsSuperAdmin(profile.is_super_admin);
+        setTermsAcceptedAt(profile.terms_accepted_at);
       })
       .catch(() => {
         setRole(null);
         setClassId(null);
         setSchoolId(null);
         setIsSuperAdmin(false);
+        setTermsAcceptedAt(null);
       });
   }, [session?.user]);
 
@@ -87,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         classId,
         schoolId,
         isSuperAdmin,
+        termsAcceptedAt,
         loading,
         signInWithGoogle,
         signOut,
