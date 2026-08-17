@@ -330,12 +330,16 @@ function RadioStudio() {
   const start = async () => {
     setError(null);
     try {
+      // Desactivem el processament pensat per a videotrucades: amb els efectes
+      // sonant pels altaveus, la cancel·lació d'eco i el control automàtic de
+      // guany poden confondre la veu amb "eco" i baixar-ne el volum de cop.
+      const rawAudio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
       const wanted: MediaTrackConstraints[] = duo
         ? [
-            micA ? { deviceId: { exact: micA } } : {},
-            micB ? { deviceId: { exact: micB } } : {},
+            micA ? { ...rawAudio, deviceId: { exact: micA } } : rawAudio,
+            micB ? { ...rawAudio, deviceId: { exact: micB } } : rawAudio,
           ]
-        : [{}];
+        : [rawAudio];
 
       const streams: MediaStream[] = [];
       for (const audio of wanted) {
