@@ -117,7 +117,7 @@ function CoordinatorPanel() {
 
   return (
     <main className="studio-bg min-h-screen px-4 py-10">
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="mx-auto w-full max-w-2xl xl:max-w-4xl 2xl:max-w-5xl">
         <header className="mb-8 flex flex-wrap items-center gap-3">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <Settings className="size-6" />

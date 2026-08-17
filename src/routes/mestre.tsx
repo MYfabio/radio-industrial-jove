@@ -392,7 +392,7 @@ function TeacherPanel() {
 
   return (
     <main className="studio-bg min-h-screen px-4 py-10">
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-3xl xl:max-w-5xl 2xl:max-w-6xl">
         <header className="mb-8 flex flex-wrap items-center gap-3">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <GraduationCap className="size-6" />
