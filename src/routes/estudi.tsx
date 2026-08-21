@@ -327,6 +327,12 @@ function RadioStudio() {
     }
   };
 
+  const stopBackground = () => {
+    setBgTrack(null);
+    bgRef.current?.stop();
+    bgRef.current = null;
+  };
+
   const start = async () => {
     setError(null);
     try {
@@ -776,6 +782,14 @@ function RadioStudio() {
                       <span className="text-base">{t.emoji}</span> {t.label}
                     </button>
                   ))}
+                  {bgTrack && (
+                    <button
+                      onClick={stopBackground}
+                      className="flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive-foreground transition-transform hover:scale-105 active:scale-95"
+                    >
+                      <Square className="size-3.5" /> Atura
+                    </button>
+                  )}
                 </div>
                 <label className="mt-2 block text-xs text-muted-foreground">
                   Volum de la música
