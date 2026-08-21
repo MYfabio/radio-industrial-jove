@@ -31,6 +31,40 @@ export interface BgHandle {
   setVolume: (v: number) => void;
 }
 
+/** Reprodueix en bucle un arxiu real pujat per la classe (música de fons pròpia). */
+export function startBackgroundFromBuffer(
+  ctx: AudioContext,
+  buffer: AudioBuffer,
+  destinations: AudioNode[],
+  volume = 0.12,
+): BgHandle {
+  const master = ctx.createGain();
+  master.gain.value = volume;
+  destinations.forEach((d) => master.connect(d));
+
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.loop = true;
+  src.connect(master);
+  src.start();
+
+  return {
+    stop: () => {
+      const now = ctx.currentTime;
+      master.gain.cancelScheduledValues(now);
+      master.gain.setValueAtTime(master.gain.value, now);
+      master.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+      window.setTimeout(() => {
+        src.stop();
+        master.disconnect();
+      }, 900);
+    },
+    setVolume: (v: number) => {
+      master.gain.setTargetAtTime(v, ctx.currentTime, 0.1);
+    },
+  };
+}
+
 const CALMA = [220, 277.18, 329.63, 261.63];
 const NOTICIES = [146.83, 146.83, 196, 174.61];
 

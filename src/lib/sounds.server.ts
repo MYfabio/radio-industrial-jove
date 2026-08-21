@@ -6,11 +6,14 @@
 import type { Sql } from "./podcasts.server";
 import { sqlText, sqlInt, sqlBytea } from "./sqlLiteral";
 
+export type SoundKind = "efecte" | "musica";
+
 export interface SoundRow {
   id: number;
   name: string;
   emoji: string;
   mime: string;
+  kind: SoundKind;
   owner_user_id: string | null;
   created_at: string;
 }
@@ -29,6 +32,7 @@ export async function ensureSoundsSchema(sql: Sql) {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  await sql.unsafe(`ALTER TABLE sounds ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'efecte'`);
 }
 
 function decode(base64: string): Buffer {
@@ -41,7 +45,7 @@ function decode(base64: string): Buffer {
 export async function listSounds(sql: Sql): Promise<SoundRow[]> {
   await ensureSoundsSchema(sql);
   const rows = await sql.unsafe(`
-    SELECT id, name, emoji, mime, owner_user_id, created_at
+    SELECT id, name, emoji, mime, kind, owner_user_id, created_at
       FROM sounds
      ORDER BY created_at DESC
      LIMIT 200
@@ -51,7 +55,7 @@ export async function listSounds(sql: Sql): Promise<SoundRow[]> {
 
 export async function createSound(
   sql: Sql,
-  data: { name: string; emoji: string; mime: string; dataBase64: string; ownerId: string },
+  data: { name: string; emoji: string; mime: string; kind: SoundKind; dataBase64: string; ownerId: string },
 ): Promise<SoundRow> {
   await ensureSoundsSchema(sql);
   const bytes = decode(data.dataBase64);
@@ -59,9 +63,9 @@ export async function createSound(
     throw new Error("El so és massa gran (màxim 8 MB).");
   }
   const [row] = await sql.unsafe(`
-    INSERT INTO sounds (name, emoji, mime, data, owner_user_id)
-    VALUES (${sqlText(data.name)}, ${sqlText(data.emoji)}, ${sqlText(data.mime)}, ${sqlBytea(bytes)}, ${sqlText(data.ownerId)})
-    RETURNING id, name, emoji, mime, owner_user_id, created_at
+    INSERT INTO sounds (name, emoji, mime, kind, data, owner_user_id)
+    VALUES (${sqlText(data.name)}, ${sqlText(data.emoji)}, ${sqlText(data.mime)}, ${sqlText(data.kind)}, ${sqlBytea(bytes)}, ${sqlText(data.ownerId)})
+    RETURNING id, name, emoji, mime, kind, owner_user_id, created_at
   `);
   return row as unknown as SoundRow;
 }

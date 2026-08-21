@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Role } from "./settings.server";
+import type { SoundKind } from "./sounds.server";
 
 export const fetchSounds = createServerFn({ method: "GET" }).handler(async () => {
   const { getSql } = await import("./podcasts.server");
@@ -17,6 +18,7 @@ export interface UploadSoundInput {
   name: string;
   emoji: string;
   mime: string;
+  kind: SoundKind;
   dataBase64: string;
 }
 

@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { EFFECTS, playEffect, type EffectId } from "@/lib/soundEffects";
 import { SITE_NAME, CANVA_COVER_TEMPLATE_URL } from "@/lib/siteConfig";
 import { autoEdit, type AutoEditResult } from "@/lib/autoEdit";
-import { BG_TRACKS, startBackground, type BgHandle } from "@/lib/bgMusic";
+import { BG_TRACKS, startBackground, startBackgroundFromBuffer, type BgHandle } from "@/lib/bgMusic";
 import { encodeMp3, safeFileName } from "@/lib/mp3";
 import { playBuffer, randomEmoji } from "@/lib/customSounds";
 import { blobToBase64 } from "@/lib/publishPodcast";
 import { fetchSounds, uploadSoundFn, deleteSoundFn } from "@/lib/sounds.functions";
-import type { SoundRow } from "@/lib/sounds.server";
+import type { SoundRow, SoundKind } from "@/lib/sounds.server";
 import { useAuth } from "@/lib/auth";
 import { TEMPLATES, type PodcastTemplate } from "@/lib/podcastTemplates";
 import { printTemplateGuide } from "@/lib/printTemplate";
@@ -68,6 +68,7 @@ function RadioStudio() {
   const [ai, setAi] = useState<AiEditResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [sounds, setSounds] = useState<SoundRow[]>([]);
+  const [uploadKind, setUploadKind] = useState<SoundKind>("efecte");
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [activeCustom, setActiveCustom] = useState<number | null>(null);
@@ -145,6 +146,7 @@ function RadioStudio() {
   const mixRef = useRef<GainNode | null>(null);
   const monitorRef = useRef<GainNode | null>(null);
   const bgRef = useRef<BgHandle | null>(null);
+  const bgTrackRef = useRef<string | null>(null);
 
 
   useEffect(() => {
@@ -264,8 +266,9 @@ function RadioStudio() {
         await uploadSoundFn({
           data: {
             name: file.name.replace(/\.[^.]+$/, "").slice(0, 24) || "El meu so",
-            emoji: randomEmoji(),
+            emoji: uploadKind === "musica" ? "🎵" : randomEmoji(),
             mime: file.type || "audio/mpeg",
+            kind: uploadKind,
             dataBase64,
           },
         });
@@ -316,19 +319,41 @@ function RadioStudio() {
     }
   };
 
+  /** "calma"/"noticies" es sintetitzen; "so:123" és música pujada per la classe. */
+  const startBackgroundTrack = async (id: string, ctx: AudioContext, destinations: AudioNode[]): Promise<BgHandle> => {
+    if (id.startsWith("so:")) {
+      const soundId = Number(id.slice(3));
+      let buffer = bufferCache.current.get(soundId);
+      if (!buffer) {
+        const res = await fetch(`/api/public/sound/${soundId}`);
+        buffer = await ctx.decodeAudioData(await res.arrayBuffer());
+        bufferCache.current.set(soundId, buffer);
+      }
+      return startBackgroundFromBuffer(ctx, buffer, destinations, bgVolume);
+    }
+    return startBackground(ctx, id, destinations, bgVolume);
+  };
+
   const toggleBackground = (id: string) => {
     const next = bgTrack === id ? null : id;
     setBgTrack(next);
+    bgTrackRef.current = next;
     bgRef.current?.stop();
     bgRef.current = null;
     if (next) {
       const ctx = ensureCtx();
-      bgRef.current = startBackground(ctx, next, destinationsNow(ctx), bgVolume);
+      void startBackgroundTrack(next, ctx, destinationsNow(ctx))
+        .then((handle) => {
+          if (bgTrackRef.current === next) bgRef.current = handle;
+          else handle.stop();
+        })
+        .catch(() => setError("No s'ha pogut reproduir aquesta música."));
     }
   };
 
   const stopBackground = () => {
     setBgTrack(null);
+    bgTrackRef.current = null;
     bgRef.current?.stop();
     bgRef.current = null;
   };
@@ -377,7 +402,12 @@ function RadioStudio() {
       // Si hi ha música de fons activa, la reencaminem cap a la gravació.
       if (bgTrack) {
         bgRef.current?.stop();
-        bgRef.current = startBackground(ctx, bgTrack, [monitorRef.current ?? ctx.destination, mix], bgVolume);
+        bgRef.current = null;
+        const track = bgTrack;
+        void startBackgroundTrack(track, ctx, [monitorRef.current ?? ctx.destination, mix]).then((handle) => {
+          if (bgTrackRef.current === track) bgRef.current = handle;
+          else handle.stop();
+        });
       }
 
       const recorder = new MediaRecorder(dest.stream);
@@ -782,6 +812,24 @@ function RadioStudio() {
                       <span className="text-base">{t.emoji}</span> {t.label}
                     </button>
                   ))}
+                  {sounds
+                    .filter((s) => s.kind === "musica")
+                    .map((s) => {
+                      const id = `so:${s.id}`;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => toggleBackground(id)}
+                          aria-pressed={bgTrack === id}
+                          title={s.name}
+                          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-transform hover:scale-105 active:scale-95 ${
+                            bgTrack === id ? "border-accent bg-accent/20 text-accent" : "border-border bg-secondary/40"
+                          }`}
+                        >
+                          <span className="text-base">{s.emoji}</span> {s.name}
+                        </button>
+                      );
+                    })}
                   {bgTrack && (
                     <button
                       onClick={stopBackground}
@@ -929,6 +977,29 @@ function RadioStudio() {
                   {!user && " Inicia sessió per afegir-ne de nous."}
                 </p>
 
+                <div className="mt-2 flex gap-1.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setUploadKind("efecte")}
+                    aria-pressed={uploadKind === "efecte"}
+                    className={`flex-1 rounded-full border px-2.5 py-1 font-semibold transition-colors ${
+                      uploadKind === "efecte" ? "border-accent bg-accent/20 text-accent" : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    🔊 Efecte de so
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUploadKind("musica")}
+                    aria-pressed={uploadKind === "musica"}
+                    className={`flex-1 rounded-full border px-2.5 py-1 font-semibold transition-colors ${
+                      uploadKind === "musica" ? "border-accent bg-accent/20 text-accent" : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    🎵 Música de fons
+                  </button>
+                </div>
+
                 <div
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -941,16 +1012,20 @@ function RadioStudio() {
                     dragOver ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground"
                   }`}
                 >
-                  Arrossega aquí diversos sons alhora (o fes clic per triar-los).
+                  {uploadKind === "musica"
+                    ? "Arrossega aquí una pista de música (es reproduirà en bucle a la secció de música de fons)."
+                    : "Arrossega aquí diversos sons alhora (o fes clic per triar-los)."}
                 </div>
 
                 {uploadStatus && (
                   <p className="mt-2 text-center text-xs font-semibold text-accent">{uploadStatus}</p>
                 )}
 
-                {sounds.length > 0 && (
+                {sounds.filter((s) => s.kind === "efecte").length > 0 && (
                   <div className="mt-3 grid grid-cols-5 gap-2">
-                    {sounds.map((s) => (
+                    {sounds
+                      .filter((s) => s.kind === "efecte")
+                      .map((s) => (
                       <div key={s.id} className="relative">
                         <button
                           onClick={() => void triggerCustom(s)}
