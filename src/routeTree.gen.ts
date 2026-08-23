@@ -17,6 +17,7 @@ import { Route as EstudiRouteImport } from './routes/estudi'
 import { Route as MestreRouteImport } from './routes/mestre'
 import { Route as MurRouteImport } from './routes/mur'
 import { Route as PrivacitatRouteImport } from './routes/privacitat'
+import { Route as RegistreRouteImport } from './routes/registre'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as TermesRouteImport } from './routes/termes'
@@ -65,6 +66,11 @@ const MurRoute = MurRouteImport.update({
 const PrivacitatRoute = PrivacitatRouteImport.update({
   id: '/privacitat',
   path: '/privacitat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegistreRoute = RegistreRouteImport.update({
+  id: '/registre',
+  path: '/registre',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/mestre': typeof MestreRoute
   '/mur': typeof MurRoute
   '/privacitat': typeof PrivacitatRoute
+  '/registre': typeof RegistreRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/superadmin': typeof SuperadminRoute
   '/termes': typeof TermesRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/mestre': typeof MestreRoute
   '/mur': typeof MurRoute
   '/privacitat': typeof PrivacitatRoute
+  '/registre': typeof RegistreRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/superadmin': typeof SuperadminRoute
   '/termes': typeof TermesRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/mestre': typeof MestreRoute
   '/mur': typeof MurRoute
   '/privacitat': typeof PrivacitatRoute
+  '/registre': typeof RegistreRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/superadmin': typeof SuperadminRoute
   '/termes': typeof TermesRoute
@@ -182,6 +191,7 @@ export interface FileRouteTypes {
     | '/mestre'
     | '/mur'
     | '/privacitat'
+    | '/registre'
     | '/sitemap.xml'
     | '/superadmin'
     | '/termes'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/mestre'
     | '/mur'
     | '/privacitat'
+    | '/registre'
     | '/sitemap.xml'
     | '/superadmin'
     | '/termes'
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/mestre'
     | '/mur'
     | '/privacitat'
+    | '/registre'
     | '/sitemap.xml'
     | '/superadmin'
     | '/termes'
@@ -240,6 +252,7 @@ export interface RootRouteChildren {
   MestreRoute: typeof MestreRoute
   MurRoute: typeof MurRoute
   PrivacitatRoute: typeof PrivacitatRoute
+  RegistreRoute: typeof RegistreRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SuperadminRoute: typeof SuperadminRoute
   TermesRoute: typeof TermesRoute
@@ -307,6 +320,13 @@ declare module '@tanstack/react-router' {
       path: '/privacitat'
       fullPath: '/privacitat'
       preLoaderRoute: typeof PrivacitatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/registre': {
+      id: '/registre'
+      path: '/registre'
+      fullPath: '/registre'
+      preLoaderRoute: typeof RegistreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -384,6 +404,7 @@ const rootRouteChildren: RootRouteChildren = {
   MestreRoute: MestreRoute,
   MurRoute: MurRoute,
   PrivacitatRoute: PrivacitatRoute,
+  RegistreRoute: RegistreRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SuperadminRoute: SuperadminRoute,
   TermesRoute: TermesRoute,

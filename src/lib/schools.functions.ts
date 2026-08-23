@@ -88,34 +88,6 @@ async function requireCoordinadorSchoolId(context: { userId: string; claims: Rec
   }
 }
 
-/**
- * Per a qualsevol usuari (no només coordinador): el nom de la seva escola i
- * el correu del seu coordinador, per poder-li escriure i demanar permís de
- * docent. Retorna null si el compte no pertany a cap escola.
- */
-export const fetchMySchoolContactFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { getSql } = await import("./podcasts.server");
-    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
-    const { ensureSchoolsSchema, getSchoolById } = await import("./schools.server");
-    const sql = getSql();
-    try {
-      await ensureSettingsSchema(sql);
-      await ensureSchoolsSchema(sql);
-      const email = (context.claims["email"] as string | undefined) ?? "";
-      const profile = await getOrCreateProfile(sql, context.userId, email);
-      if (profile.school_id === null) return null;
-      const school = await getSchoolById(sql, profile.school_id);
-      if (!school) return null;
-      return { schoolName: school.name, coordinadorEmail: school.coordinador_email };
-    } catch (err) {
-      throw new Error(describePgError(err));
-    } finally {
-      await sql.end();
-    }
-  });
-
 export const fetchMySchoolFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {

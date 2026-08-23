@@ -2,13 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Loader2, ShieldCheck, Plus, ExternalLink } from "lucide-react";
+import { Loader2, ShieldCheck, Plus, ExternalLink, Check, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { useAuth } from "@/lib/auth";
 import { createSchoolFn, fetchSchoolsFn } from "@/lib/schools.functions";
+import { fetchAccessRequestsFn, resolveAccessRequestFn } from "@/lib/accessRequests.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
 
 export const Route = createFileRoute("/superadmin")({
@@ -23,6 +24,8 @@ function SuperAdminPanel() {
   const qc = useQueryClient();
   const create = useServerFn(createSchoolFn);
   const list = useServerFn(fetchSchoolsFn);
+  const listRequests = useServerFn(fetchAccessRequestsFn);
+  const resolveRequest = useServerFn(resolveAccessRequestFn);
 
   const {
     data: schools,
@@ -34,6 +37,18 @@ function SuperAdminPanel() {
     queryFn: () => list({}),
     enabled: !!user && isSuperAdmin,
   });
+
+  const { data: requests, isLoading: loadingRequests } = useQuery({
+    queryKey: ["access-requests"],
+    queryFn: () => listRequests({}),
+    enabled: !!user && isSuperAdmin,
+  });
+  const pendingRequests = (requests ?? []).filter((r) => !r.resolved);
+
+  const toggleResolved = async (id: number, resolved: boolean) => {
+    await resolveRequest({ data: { id, resolved } });
+    await qc.invalidateQueries({ queryKey: ["access-requests"] });
+  };
 
   const [name, setName] = useState("");
   const [radioName, setRadioName] = useState("");
@@ -115,6 +130,44 @@ function SuperAdminPanel() {
             <AuthButton />
           </span>
         </header>
+
+        <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <Inbox className="size-4" /> Sol·licituds pendents ({pendingRequests.length})
+          </h2>
+
+          {loadingRequests && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Carregant...
+            </p>
+          )}
+          {!loadingRequests && pendingRequests.length === 0 && (
+            <p className="text-sm text-muted-foreground">Cap sol·licitud pendent.</p>
+          )}
+          <div className="space-y-2">
+            {pendingRequests.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-border bg-secondary/40 p-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    {r.name} · <span className="font-normal text-muted-foreground">{r.email}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {r.kind === "docent" ? "Vol ser docent" : "Vol donar d'alta un centre"}
+                    {r.school_name && ` · ${r.school_name}`}
+                    {r.domain && ` · @${r.domain}`}
+                  </p>
+                  {r.message && <p className="mt-1 text-xs text-muted-foreground">"{r.message}"</p>}
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => void toggleResolved(r.id, true)}>
+                  <Check className="size-3.5" /> Resolta
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">

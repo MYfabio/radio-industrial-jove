@@ -226,6 +226,9 @@ function LandingPage() {
 
         <footer className="mt-16 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border py-6 text-xs text-muted-foreground">
           <span>{SITE_NAME} · Recurs educatiu obert</span>
+          <Link to="/registre" className="hover:underline">
+            Ets docent? Registra't
+          </Link>
           <Link to="/ajuda" className="hover:underline">
             Ajuda
           </Link>
