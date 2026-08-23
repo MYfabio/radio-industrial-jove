@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { LogOut, Settings, Users, User, ShieldCheck } from "lucide-react";
+import { LogOut, Settings, Users, User, ShieldCheck, Mail, School } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "../lib/auth";
+import { fetchMySchoolContactFn } from "../lib/schools.functions";
+import { SUPPORT_EMAIL } from "../lib/siteConfig";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { JoinClassDialog } from "./JoinClassDialog";
 import {
@@ -39,6 +42,7 @@ function GoogleIcon() {
 export function AuthButton() {
   const { user, role, classId, isSuperAdmin, loading, signInWithGoogle, signOut } = useAuth();
   const [joinOpen, setJoinOpen] = useState(false);
+  const fetchSchoolContact = useServerFn(fetchMySchoolContactFn);
 
   if (loading) {
     return <div className="size-8 shrink-0 animate-pulse rounded-full bg-secondary" />;
@@ -60,6 +64,25 @@ export function AuthButton() {
   const name = (user.user_metadata?.["full_name"] as string | undefined) ?? user.email ?? "";
   const avatarUrl = user.user_metadata?.["avatar_url"] as string | undefined;
   const initial = name.charAt(0).toUpperCase();
+
+  const requestDocent = async () => {
+    const contact = await fetchSchoolContact({}).catch(() => null);
+    const to = contact?.coordinadorEmail || SUPPORT_EMAIL;
+    const schoolPart = contact?.schoolName ? ` (${contact.schoolName})` : "";
+    const subject = encodeURIComponent("Vull ser docent a Ràdio Escolar");
+    const body = encodeURIComponent(
+      `Hola,\n\nSóc ${name} (${user.email})${schoolPart} i m'agradaria tenir permís de docent a Ràdio Escolar per poder crear classes.\n\nGràcies!`,
+    );
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  };
+
+  const requestSchool = () => {
+    const subject = encodeURIComponent("Vull donar d'alta el meu centre a Ràdio Escolar");
+    const body = encodeURIComponent(
+      `Hola,\n\nSóc ${name} (${user.email}) i m'agradaria donar d'alta el meu centre a Ràdio Escolar.\n\nNom del centre: \nDomini de Google del centre: \n\nGràcies!`,
+    );
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+  };
 
   return (
     <>
@@ -95,6 +118,16 @@ export function AuthButton() {
           {role === "alumne" && !classId && (
             <DropdownMenuItem onClick={() => setJoinOpen(true)}>
               <Users className="size-4" /> Uneix-te a una classe
+            </DropdownMenuItem>
+          )}
+          {role === "alumne" && (
+            <DropdownMenuItem onClick={() => void requestDocent()}>
+              <Mail className="size-4" /> Vull ser docent
+            </DropdownMenuItem>
+          )}
+          {role !== "coordinador" && (
+            <DropdownMenuItem onClick={requestSchool}>
+              <School className="size-4" /> Vull donar d'alta un centre
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={() => void signOut()}>
