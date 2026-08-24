@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://radio-industrial-jove-production.up.railway.app/sitemap.xml
+Sitemap: https://www.radioescolar.cat/sitemap.xml
