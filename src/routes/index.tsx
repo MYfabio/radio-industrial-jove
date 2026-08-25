@@ -14,6 +14,9 @@ import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/siteConfig";
 
+/** L alta de centre es unica per a totes les apps i viu a aulaia.cat. */
+const ALTA_URL = "https://www.aulaia.cat/alta?app=radio-escolar";
+
 const JSON_LD = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -222,6 +225,13 @@ function LandingPage() {
           >
             <Mic className="size-4" /> Entra a l'estudi
           </Link>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Voleu que hi entri el centre sencer?{" "}
+            <a href={ALTA_URL} className="font-semibold text-foreground underline underline-offset-4">
+              Demaneu l'alta del vostre centre
+            </a>
+            .
+          </p>
         </section>
 
         <footer className="mt-16 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border py-6 text-xs text-muted-foreground">
