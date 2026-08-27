@@ -78,6 +78,8 @@ function RadioStudio() {
   const [fxVolume, setFxVolume] = useState(0.9);
   const [fxFade, setFxFade] = useState(0);
 
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [justFinished, setJustFinished] = useState(false);
   const [duo, setDuo] = useState(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [micA, setMicA] = useState("");
@@ -87,6 +89,7 @@ function RadioStudio() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bufferCache = useRef<Map<number, AudioBuffer>>(new Map());
+  const resultRef = useRef<HTMLDivElement | null>(null);
 
   const COL1_DEFAULT = 300;
   const COL3_DEFAULT = 360;
@@ -451,6 +454,12 @@ function RadioStudio() {
     recorderRef.current = null;
     cleanup();
     setStatus("done");
+    // Celebrem el moment: portem la vista al resultat i el ressaltem un instant.
+    setJustFinished(true);
+    window.setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 150);
+    window.setTimeout(() => setJustFinished(false), 3000);
   };
 
   const runAutoEdit = async () => {
@@ -790,10 +799,27 @@ function RadioStudio() {
                     <Square className="size-4" /> Acabar la gravació
                   </Button>
                 )}
+
+                {error && !audioUrl && (
+                  <p className="w-full rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-center text-sm text-destructive-foreground">
+                    {error}
+                  </p>
+                )}
               </div>
             </section>
 
-            <section className="grid gap-3 sm:grid-cols-2">
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((v) => !v)}
+                aria-pressed={showAdvanced}
+                className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground hover:bg-secondary"
+              >
+                {showAdvanced ? "Menys opcions" : "Més opcions"}
+              </button>
+            </div>
+
+            <section className={showAdvanced ? "grid gap-3 sm:grid-cols-2" : "grid gap-3"}>
               <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                 <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <Music className="size-4" /> Música de fons
@@ -839,6 +865,7 @@ function RadioStudio() {
                     </button>
                   )}
                 </div>
+                {showAdvanced && (
                 <label className="mt-2 block text-xs text-muted-foreground">
                   Volum de la música
                   <input
@@ -855,8 +882,10 @@ function RadioStudio() {
                     className="mt-1 w-full"
                   />
                 </label>
+                )}
               </div>
 
+              {showAdvanced && (
               <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                 <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <Users className="size-4" /> Mode col·laboratiu
@@ -898,6 +927,7 @@ function RadioStudio() {
                   </div>
                 )}
               </div>
+              )}
             </section>
 
             <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -905,6 +935,7 @@ function RadioStudio() {
                 3. Efectes de so
               </h2>
 
+              {showAdvanced && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <label className="block text-xs text-muted-foreground">
                   Volum dels efectes
@@ -937,6 +968,7 @@ function RadioStudio() {
                   />
                 </label>
               </div>
+              )}
 
               <div className="mt-3 grid grid-cols-5 gap-2">
 
@@ -960,9 +992,11 @@ function RadioStudio() {
               <div className="mt-4 border-t border-border pt-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold">Sons de la classe</h3>
-                  <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="size-4" /> Pujar sons
-                  </Button>
+                  {showAdvanced && (
+                    <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="size-4" /> Pujar sons
+                    </Button>
+                  )}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -977,6 +1011,8 @@ function RadioStudio() {
                   {!user && " Inicia sessió per afegir-ne de nous."}
                 </p>
 
+                {showAdvanced && (
+                <>
                 <div className="mt-2 flex gap-1.5 text-xs">
                   <button
                     type="button"
@@ -1016,6 +1052,8 @@ function RadioStudio() {
                     ? "Arrossega aquí una pista de música (es reproduirà en bucle a la secció de música de fons)."
                     : "Arrossega aquí diversos sons alhora (o fes clic per triar-los)."}
                 </div>
+                </>
+                )}
 
                 {uploadStatus && (
                   <p className="mt-2 text-center text-xs font-semibold text-accent">{uploadStatus}</p>
@@ -1069,10 +1107,20 @@ function RadioStudio() {
 
           {/* ---------- Columna 3: edició, escolta i publicació ---------- */}
           <div className="min-h-0 space-y-3 lg:col-span-2 lg:overflow-y-auto lg:pr-1 xl:col-span-1">
-            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <section
+              ref={resultRef}
+              className={`rounded-2xl border bg-card p-4 shadow-sm transition-all duration-500 ${
+                justFinished ? "border-accent ring-2 ring-accent/50" : "border-border"
+              }`}
+            >
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 4. El teu pòdcast
               </h2>
+              {justFinished && audioUrl && (
+                <p className="mt-2 rounded-xl bg-accent/15 p-2 text-center text-sm font-semibold text-accent">
+                  🎉 Gravació acabada! Escolta-la aquí sota.
+                </p>
+              )}
 
               {!audioUrl && (
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -1178,7 +1226,7 @@ function RadioStudio() {
                 </div>
               )}
 
-              {error && (
+              {error && audioUrl && (
                 <p className="mt-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-center text-sm text-destructive-foreground">
                   {error}
                 </p>

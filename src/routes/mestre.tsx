@@ -345,6 +345,8 @@ function TeacherPanel() {
   const { user, role, loading: authLoading } = useAuth();
   const qc = useQueryClient();
   const list = useServerFn(fetchAllPodcasts);
+  const [classFilter, setClassFilter] = useState<string>("totes");
+  const [shownReviewed, setShownReviewed] = useState(10);
   const { data, isLoading } = useQuery({
     queryKey: ["podcasts", "tots"],
     queryFn: () => list({}),
@@ -354,8 +356,20 @@ function TeacherPanel() {
     void qc.invalidateQueries({ queryKey: ["podcasts"] });
   };
 
-  const pending = (data ?? []).filter((p) => p.status === "pendent");
-  const rest = (data ?? []).filter((p) => p.status !== "pendent");
+  const classNames = Array.from(
+    new Set((data ?? []).map((p) => p.class_name).filter((n): n is string => !!n)),
+  ).sort();
+  const hasClassless = (data ?? []).some((p) => !p.class_name);
+
+  const matchesFilter = (p: PodcastRow) =>
+    classFilter === "totes"
+      ? true
+      : classFilter === "sense-classe"
+        ? !p.class_name
+        : p.class_name === classFilter;
+
+  const pending = (data ?? []).filter((p) => p.status === "pendent" && matchesFilter(p));
+  const rest = (data ?? []).filter((p) => p.status !== "pendent" && matchesFilter(p));
 
   if (authLoading) {
     return (
@@ -431,6 +445,28 @@ function TeacherPanel() {
           </p>
         )}
 
+        {(classNames.length > 0 || hasClassless) && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Classe:
+            </span>
+            {["totes", ...classNames, ...(hasClassless ? ["sense-classe"] : [])].map((c) => (
+              <button
+                key={c}
+                onClick={() => setClassFilter(c)}
+                aria-pressed={classFilter === c}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                  classFilter === c
+                    ? "border-accent bg-accent/20 text-accent"
+                    : "border-border bg-card text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {c === "totes" ? "Totes" : c === "sense-classe" ? "Sense classe" : c}
+              </button>
+            ))}
+          </div>
+        )}
+
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Pendents de revisar ({pending.length})
         </h2>
@@ -451,10 +487,17 @@ function TeacherPanel() {
               Ja revisats ({rest.length})
             </h2>
             <div className="space-y-4">
-              {rest.map((p) => (
+              {rest.slice(0, shownReviewed).map((p) => (
                 <Row key={p.id} p={p} onSaved={refresh} />
               ))}
             </div>
+            {rest.length > shownReviewed && (
+              <div className="mt-4 flex justify-center">
+                <Button variant="secondary" onClick={() => setShownReviewed((n) => n + 20)}>
+                  Mostra'n més ({rest.length - shownReviewed} restants)
+                </Button>
+              </div>
+            )}
           </>
         )}
       </div>

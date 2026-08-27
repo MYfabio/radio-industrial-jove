@@ -94,12 +94,15 @@ export const fetchMySchoolFn = createServerFn({ method: "GET" })
     const schoolId = await requireCoordinadorSchoolId(context);
     const { getSql } = await import("./podcasts.server");
     const { getSchoolById, listSchoolMembers } = await import("./schools.server");
+    const { ensureClassesSchema, listClassesBySchool } = await import("./classes.server");
     const sql = getSql();
     try {
       const school = await getSchoolById(sql, schoolId);
       if (!school) throw new Error("Aquesta escola ja no existeix.");
+      await ensureClassesSchema(sql);
       const members = await listSchoolMembers(sql, schoolId);
-      return { school, members };
+      const classes = await listClassesBySchool(sql, schoolId);
+      return { school, members, classes };
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {

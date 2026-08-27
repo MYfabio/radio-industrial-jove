@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Loader2, Settings, Check, UserPlus, Radio } from "lucide-react";
+import { Loader2, Settings, Check, UserPlus, Radio, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -234,6 +234,44 @@ function CoordinatorPanel() {
                     </li>
                   ))}
                 </ul>
+              )}
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <Users className="size-4" /> Classes de l'escola ({data.classes.length})
+              </h2>
+              {data.classes.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Encara no hi ha cap classe creada al centre. Els docents les creen des del Panell del
+                  mestre.
+                </p>
+              )}
+              {data.classes.length > 0 && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {data.classes.map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2"
+                    >
+                      <span className="min-w-0 truncate text-sm font-semibold">
+                        {c.name}
+                        {c.share_to_school && (
+                          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                            <Radio className="size-2.5" /> Mur escola
+                          </span>
+                        )}
+                      </span>
+                      <Link
+                        to="/classe/$code"
+                        params={{ code: c.invite_code }}
+                        className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold hover:bg-accent/10"
+                      >
+                        Mur
+                      </Link>
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
           </div>

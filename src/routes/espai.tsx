@@ -274,9 +274,19 @@ function MySpace() {
               </p>
             )}
             {!loadingMine && (mine?.length ?? 0) === 0 && (
-              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-muted-foreground">
-                Encara no has publicat cap pòdcast.
-              </p>
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border p-10 text-center">
+                <span className="text-4xl" aria-hidden="true">🎙️</span>
+                <p className="text-lg font-bold">Encara no has gravat cap pòdcast</p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  L'estudi t'espera: tria una plantilla, prem el botó vermell i explica el que vulguis.
+                </p>
+                <Link
+                  to="/estudi"
+                  className="mt-1 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-transform hover:scale-105 active:scale-95"
+                >
+                  Grava el teu primer pòdcast
+                </Link>
+              </div>
             )}
             {mine?.map((p) => (
               <MyPodcastCard key={p.id} p={p} onChanged={refreshMine} />
