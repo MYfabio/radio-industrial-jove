@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SITE_NAME, SITE_TAGLINE } from "../lib/siteConfig";
 import { AuthProvider } from "../lib/auth";
 import { CookieNotice } from "../components/CookieNotice";
+import { RoleOnboardingDialog } from "../components/RoleOnboardingDialog";
 
 function NotFoundComponent() {
   return (
@@ -129,6 +130,7 @@ function RootComponent() {
       <AuthProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
+        <RoleOnboardingDialog />
         <CookieNotice />
       </AuthProvider>
     </QueryClientProvider>

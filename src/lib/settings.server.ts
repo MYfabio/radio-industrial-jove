@@ -26,6 +26,8 @@ export interface ProfileRow {
   school_id: number | null;
   is_super_admin: boolean;
   terms_accepted_at: string | null;
+  /** Què va dir que era en el primer accés ("alumne" | "docent"); null = encara no ho ha triat. */
+  declared_role: string | null;
 }
 
 export function isSuperAdminEmail(email: string): boolean {
@@ -43,6 +45,7 @@ export async function ensureSettingsSchema(sql: Sql) {
   `);
   await sql.unsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS school_id INTEGER`);
   await sql.unsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ`);
+  await sql.unsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS declared_role TEXT`);
 }
 
 function withComputed(row: Record<string, unknown>): ProfileRow {
@@ -55,7 +58,15 @@ function withComputed(row: Record<string, unknown>): ProfileRow {
     school_id: (row["school_id"] as number | null) ?? null,
     is_super_admin: isSuperAdminEmail(email),
     terms_accepted_at: (row["terms_accepted_at"] as string | null) ?? null,
+    declared_role: (row["declared_role"] as string | null) ?? null,
   };
+}
+
+/** Desa què ha dit que és en el primer accés (alumne o docent). */
+export async function setDeclaredRole(sql: Sql, userId: string, choice: "alumne" | "docent") {
+  await sql.unsafe(
+    `UPDATE profiles SET declared_role = ${sqlText(choice)} WHERE auth_user_id = ${sqlText(userId)}`,
+  );
 }
 
 /** Docents i coordinadors han d'acceptar les condicions d'ús abans d'accedir als seus panells. */
@@ -95,7 +106,7 @@ async function resolveSchool(
 
 export async function getOrCreateProfile(sql: Sql, userId: string, email: string): Promise<ProfileRow> {
   const [existing] = await sql.unsafe(
-    `SELECT auth_user_id, email, role, class_id, school_id, terms_accepted_at FROM profiles WHERE auth_user_id = ${sqlText(userId)}`,
+    `SELECT auth_user_id, email, role, class_id, school_id, terms_accepted_at, declared_role FROM profiles WHERE auth_user_id = ${sqlText(userId)}`,
   );
   if (existing) {
     const profile = withComputed(existing as Record<string, unknown>);
@@ -109,7 +120,7 @@ export async function getOrCreateProfile(sql: Sql, userId: string, email: string
           UPDATE profiles
              SET school_id = ${sqlInt(schoolId)}${promote ? `, role = ${sqlText("coordinador")}` : ""}
            WHERE auth_user_id = ${sqlText(userId)}
-           RETURNING auth_user_id, email, role, class_id, school_id, terms_accepted_at
+           RETURNING auth_user_id, email, role, class_id, school_id, terms_accepted_at, declared_role
         `);
         return withComputed(updated as Record<string, unknown>);
       }
@@ -124,7 +135,7 @@ export async function getOrCreateProfile(sql: Sql, userId: string, email: string
     INSERT INTO profiles (auth_user_id, email, role, school_id)
     VALUES (${sqlText(userId)}, ${sqlText(email)}, ${sqlText(role)}, ${sqlInt(schoolId)})
     ON CONFLICT (auth_user_id) DO UPDATE SET email = EXCLUDED.email
-    RETURNING auth_user_id, email, role, class_id, school_id, terms_accepted_at
+    RETURNING auth_user_id, email, role, class_id, school_id, terms_accepted_at, declared_role
   `);
   return withComputed(created as Record<string, unknown>);
 }
