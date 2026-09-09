@@ -12,6 +12,13 @@ import { describePgError } from "./pgError";
 
 export type { PodcastRow };
 
+/** Missatges d'error en la llengua de qui fa la petició. */
+async function msg(key: keyof typeof import("./i18n/messages/serverPodcasts").serverPodcastsMessages, params?: Record<string, string | number>) {
+  const { st } = await import("./i18n/server");
+  const { serverPodcastsMessages } = await import("./i18n/messages/serverPodcasts");
+  return st(serverPodcastsMessages, key, params);
+}
+
 export interface PublishPodcastInput extends Omit<NewPodcast, "origin" | "classId" | "ownerId"> {}
 
 /**
@@ -147,7 +154,7 @@ export const fetchSchoolWall = createServerFn({ method: "GET" })
     const sql = getSql();
     try {
       const school = await getSchoolBySlug(sql, data.slug);
-      if (!school) throw new Error("Aquesta escola no existeix.");
+      if (!school) throw new Error(await msg("schoolNotFound"));
 
       if (!school.allow_external_sharing && school.google_domain) {
         const domain = school.google_domain.toLowerCase();
@@ -191,7 +198,7 @@ export const fetchClassWall = createServerFn({ method: "GET" })
     const sql = getSql();
     try {
       const cls = await getClassByInviteCode(sql, data.code);
-      if (!cls) throw new Error("Aquest codi no correspon a cap classe.");
+      if (!cls) throw new Error(await msg("classCodeUnknown"));
       const items = await listApprovedForClass(sql, cls.id);
       return { items, className: cls.name };
     } catch (err) {
@@ -213,7 +220,7 @@ export const fetchAllPodcasts = createServerFn({ method: "GET" })
       const email = (context.claims.email as string | undefined) ?? "";
       const profile = await getOrCreateProfile(sql, context.userId, email);
       if ((profile.role as Role) === "alumne") {
-        throw new Error("Aquest panell només és per a docents o coordinadors.");
+        throw new Error(await msg("docentOnly"));
       }
       return await listAll(sql, context.userId, (profile.role as Role) === "coordinador", profile.school_id);
     } catch (err) {

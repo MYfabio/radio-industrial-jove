@@ -13,3 +13,7 @@ yarn.lock
 .env
 .env.*
 !.env.example
+
+# Materials pesants que no han d anar al repositori
+*.zip
+*.dc.html

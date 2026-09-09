@@ -11,6 +11,8 @@ import type { PodcastRow } from "@/lib/podcasts.functions";
 import { fetchMyFavoriteIds, toggleFavoriteFn } from "@/lib/favorites.functions";
 import { onPodcastsChanged } from "@/lib/podcastSync";
 import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
+import { podcastWallMessages as m } from "@/lib/i18n/messages/podcastWall";
 import { AuthButton } from "@/components/AuthButton";
 import {
   Dialog,
@@ -71,11 +73,12 @@ function Poster({
   favorited?: boolean | undefined;
   onToggleFavorite?: (() => void) | undefined;
 }) {
+  const t = useT(m);
   const cat = p.cat || "Altres";
   const color = colorFor(cat);
   return (
     <div className="group relative w-48 shrink-0 snap-start sm:w-60">
-      <button onClick={onOpen} className="block w-full text-left" aria-label={`Obre ${p.title}`}>
+      <button onClick={onOpen} className="block w-full text-left" aria-label={t("openPodcast", { title: p.title })}>
         <div
           className="relative aspect-video overflow-hidden rounded-2xl shadow-md transition-transform duration-200 group-hover:scale-[1.04] group-hover:shadow-2xl"
           style={
@@ -100,7 +103,7 @@ function Poster({
             className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow"
             style={{ background: color }}
           >
-            {cat}
+            {p.cat || t("otherCategory")}
           </span>
           <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity duration-200 group-hover:bg-black/30 group-hover:opacity-100">
             <span className="flex size-14 items-center justify-center rounded-full bg-white/90 text-black shadow-lg">
@@ -115,7 +118,7 @@ function Poster({
             e.stopPropagation();
             onToggleFavorite();
           }}
-          aria-label={favorited ? "Treure dels preferits" : "Afegir als preferits"}
+          aria-label={favorited ? t("removeFavorite") : t("addFavorite")}
           aria-pressed={favorited}
           className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur transition-transform hover:scale-110"
         >
@@ -124,13 +127,14 @@ function Poster({
       )}
       <h3 className="mt-1.5 truncate text-sm font-bold leading-tight">{p.title}</h3>
       <p className="truncate text-xs text-muted-foreground">
-        {p.author || "Anònim"} · {formatTime(p.dur)}
+        {p.author || t("anonymous")} · {formatTime(p.dur)}
       </p>
     </div>
   );
 }
 
 function ShareButton({ id, shareParam }: { id: number; shareParam: string }) {
+  const t = useT(m);
   const [copied, setCopied] = useState(false);
 
   const share = async () => {
@@ -154,7 +158,7 @@ function ShareButton({ id, shareParam }: { id: number; shareParam: string }) {
       className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-semibold hover:bg-secondary"
     >
       {copied ? <Check className="size-4 text-accent" /> : <Share2 className="size-4" />}
-      {copied ? "Enllaç copiat!" : "Compartir"}
+      {copied ? t("linkCopied") : t("share")}
     </button>
   );
 }
@@ -174,6 +178,7 @@ function DetailDialog({
   onToggleFavorite?: (() => void) | undefined;
   onClose: () => void;
 }) {
+  const t = useT(m);
   if (!p) return null;
   const cat = p.cat || "Altres";
   const color = colorFor(cat);
@@ -202,11 +207,11 @@ function DetailDialog({
               className="mb-2 inline-block w-fit rounded-full px-3 py-1 text-xs font-bold text-white"
               style={{ background: color }}
             >
-              {cat}
+              {p.cat || t("otherCategory")}
             </span>
             <DialogTitle className="text-xl">{p.title}</DialogTitle>
             <DialogDescription className="flex items-center gap-1 text-sm">
-              {p.author || "Anònim"} <Clock className="ml-2 size-3.5" /> {formatTime(p.dur)}
+              {p.author || t("anonymous")} <Clock className="ml-2 size-3.5" /> {formatTime(p.dur)}
             </DialogDescription>
           </DialogHeader>
 
@@ -226,7 +231,7 @@ function DetailDialog({
                 }`}
               >
                 <Heart className={`size-4 ${favorited ? "fill-current" : ""}`} />
-                {favorited ? "Als preferits" : "Preferit"}
+                {favorited ? t("inFavorites") : t("favorite")}
               </button>
             )}
             {canShare && <ShareButton id={p.id} shareParam={shareParam} />}
@@ -247,7 +252,7 @@ function DetailDialog({
 
           {p.teacher_note && (
             <p className="mt-4 rounded-xl border border-accent/40 bg-accent/10 p-3 text-sm">
-              <span className="font-semibold text-accent">Comentari del mestre: </span>
+              <span className="font-semibold text-accent">{t("teacherNote")}{" "}</span>
               {p.teacher_note}
             </p>
           )}
@@ -272,11 +277,12 @@ function CategoryRow({
   favoriteIds: Set<number> | null;
   onToggleFavorite: ((id: number) => void) | null;
 }) {
+  const t = useT(m);
   return (
     <section className="mb-6">
       <h2 className="mb-2 flex items-center gap-2 text-base font-bold sm:text-lg">
         <span className="size-2.5 rounded-full" style={{ background: color }} />
-        {label}
+        {label === "Altres" ? t("otherCategory") : label}
         <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
       </h2>
       <div className="scrollbar-none -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-2">
@@ -314,10 +320,11 @@ export function PodcastWallView({
   canShare,
   shareParam = "p",
   locked = null,
-  emptyMessage = "Encara no hi ha cap pòdcast aprovat.",
+  emptyMessage,
   headerIcon,
   headerActions,
 }: PodcastWallViewProps) {
+  const t = useT(m);
   const qc = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const [query, setQuery] = useState("");
@@ -389,9 +396,9 @@ export function PodcastWallView({
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border p-10 text-center">
           <Lock className="size-8 text-muted-foreground" />
           <div>
-            <p className="font-semibold">Aquest mur és privat</p>
+            <p className="font-semibold">{t("privateWall")}</p>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              {authLoading ? "Comprovant la sessió..." : locked.message}
+              {authLoading ? t("checkingSession") : locked.message}
             </p>
           </div>
           {!user && <AuthButton />}
@@ -404,21 +411,21 @@ export function PodcastWallView({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cerca per títol, autor o etiqueta…"
-              aria-label="Cerca pòdcasts"
+              placeholder={t("searchPlaceholder")}
+              aria-label={t("searchLabel")}
               className="w-full rounded-full border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none ring-accent focus:ring-2"
             />
           </div>
 
           {items.length === 0 && (
             <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-              {emptyMessage}
+              {emptyMessage ?? t("emptyDefault")}
             </p>
           )}
 
           {items.length > 0 && filtered.length === 0 && (
             <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-              Cap pòdcast coincideix amb «{query}».
+              {t("noMatch", { query })}
             </p>
           )}
 

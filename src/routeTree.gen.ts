@@ -24,6 +24,7 @@ import { Route as TermesRouteImport } from './routes/termes'
 import { Route as ApiAiEditRouteImport } from './routes/api/ai-edit'
 import { Route as ClasseCodeRouteImport } from './routes/classe.$code'
 import { Route as EscolaSlugRouteImport } from './routes/escola.$slug'
+import { Route as UneixCodeRouteImport } from './routes/uneix.$code'
 import { Route as ApiPublicAudioIdRouteImport } from './routes/api/public/audio/$id'
 import { Route as ApiPublicCoverIdRouteImport } from './routes/api/public/cover/$id'
 import { Route as ApiPublicSoundIdRouteImport } from './routes/api/public/sound/$id'
@@ -103,6 +104,11 @@ const EscolaSlugRoute = EscolaSlugRouteImport.update({
   path: '/escola/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UneixCodeRoute = UneixCodeRouteImport.update({
+  id: '/uneix/$code',
+  path: '/uneix/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAudioIdRoute = ApiPublicAudioIdRouteImport.update({
   id: '/api/public/audio/$id',
   path: '/api/public/audio/$id',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/api/ai-edit': typeof ApiAiEditRoute
   '/classe/$code': typeof ClasseCodeRoute
   '/escola/$slug': typeof EscolaSlugRoute
+  '/uneix/$code': typeof UneixCodeRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
   '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/api/ai-edit': typeof ApiAiEditRoute
   '/classe/$code': typeof ClasseCodeRoute
   '/escola/$slug': typeof EscolaSlugRoute
+  '/uneix/$code': typeof UneixCodeRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
   '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/api/ai-edit': typeof ApiAiEditRoute
   '/classe/$code': typeof ClasseCodeRoute
   '/escola/$slug': typeof EscolaSlugRoute
+  '/uneix/$code': typeof UneixCodeRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
   '/api/public/sound/$id': typeof ApiPublicSoundIdRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/api/ai-edit'
     | '/classe/$code'
     | '/escola/$slug'
+    | '/uneix/$code'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
     | '/api/public/sound/$id'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/api/ai-edit'
     | '/classe/$code'
     | '/escola/$slug'
+    | '/uneix/$code'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
     | '/api/public/sound/$id'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/api/ai-edit'
     | '/classe/$code'
     | '/escola/$slug'
+    | '/uneix/$code'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
     | '/api/public/sound/$id'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   ApiAiEditRoute: typeof ApiAiEditRoute
   ClasseCodeRoute: typeof ClasseCodeRoute
   EscolaSlugRoute: typeof EscolaSlugRoute
+  UneixCodeRoute: typeof UneixCodeRoute
   ApiPublicAudioIdRoute: typeof ApiPublicAudioIdRoute
   ApiPublicCoverIdRoute: typeof ApiPublicCoverIdRoute
   ApiPublicSoundIdRoute: typeof ApiPublicSoundIdRoute
@@ -371,6 +384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EscolaSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/uneix/$code': {
+      id: '/uneix/$code'
+      path: '/uneix/$code'
+      fullPath: '/uneix/$code'
+      preLoaderRoute: typeof UneixCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/audio/$id': {
       id: '/api/public/audio/$id'
       path: '/api/public/audio/$id'
@@ -411,6 +431,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAiEditRoute: ApiAiEditRoute,
   ClasseCodeRoute: ClasseCodeRoute,
   EscolaSlugRoute: EscolaSlugRoute,
+  UneixCodeRoute: UneixCodeRoute,
   ApiPublicAudioIdRoute: ApiPublicAudioIdRoute,
   ApiPublicCoverIdRoute: ApiPublicCoverIdRoute,
   ApiPublicSoundIdRoute: ApiPublicSoundIdRoute,

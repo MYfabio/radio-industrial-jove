@@ -3,6 +3,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { describePgError } from "./pgError";
 import type { AccessRequestKind } from "./accessRequests.server";
 
+/** Missatges d'error en la llengua de qui fa la petició. */
+async function msg(key: keyof typeof import("./i18n/messages/serverPodcasts").serverPodcastsMessages, params?: Record<string, string | number>) {
+  const { st } = await import("./i18n/server");
+  const { serverPodcastsMessages } = await import("./i18n/messages/serverPodcasts");
+  return st(serverPodcastsMessages, key, params);
+}
+
 export interface SubmitAccessRequestInput {
   kind: AccessRequestKind;
   name: string;
@@ -22,10 +29,10 @@ export const submitAccessRequestFn = createServerFn({ method: "POST" })
     try {
       const name = data.name.trim();
       const email = data.email.trim().toLowerCase();
-      if (!name) throw new Error("Posa-hi el teu nom.");
-      if (!email.includes("@")) throw new Error("Posa-hi un correu vàlid.");
+      if (!name) throw new Error(await msg("nameRequired"));
+      if (!email.includes("@")) throw new Error(await msg("emailInvalid"));
       if (data.kind === "escola" && !data.schoolName?.trim()) {
-        throw new Error("Posa-hi el nom del centre.");
+        throw new Error(await msg("schoolNameRequired"));
       }
       return await createAccessRequest(sql, {
         kind: data.kind,
@@ -49,7 +56,7 @@ async function requireSuperAdmin(context: { userId: string; claims: Record<strin
   const sql = getSql();
   try {
     const email = (context.claims["email"] as string | undefined) ?? "";
-    if (!isSuperAdminEmail(email)) throw new Error("Aquest panell només és per al super admin.");
+    if (!isSuperAdminEmail(email)) throw new Error(await msg("superAdminOnly"));
     await ensureSettingsSchema(sql);
     await ensureSchoolsSchema(sql);
     await getOrCreateProfile(sql, context.userId, email);

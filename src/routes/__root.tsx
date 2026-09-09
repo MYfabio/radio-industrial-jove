@@ -7,13 +7,16 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { SITE_NAME, SITE_TAGLINE } from "../lib/siteConfig";
+import { SITE_NAME, siteTagline } from "../lib/siteConfig";
 import { AuthProvider } from "../lib/auth";
 import { CookieNotice } from "../components/CookieNotice";
+import { LangProvider, readStoredLang, tr, isLang, type Lang } from "../lib/i18n";
+import { fetchLangFn } from "../lib/i18n/functions";
+import { rootMessages } from "../lib/i18n/messages/root";
 
 function NotFoundComponent() {
   return (
@@ -76,21 +79,30 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
+  // La llengua ve de la galeta `radio-lang`: així el primer render del servidor
+  // ja surt en la llengua triada i la hidratació no difereix del client.
+  loader: () => fetchLangFn(),
+  staleTime: Infinity,
+  head: ({ loaderData }) => {
+    const lang: Lang = isLang(loaderData?.lang) ? loaderData.lang : "ca";
+    const tagline = siteTagline(lang);
+    const description = tr(lang, rootMessages, "description", { tagline });
+    const ogDescription = tr(lang, rootMessages, "ogDescription", { tagline });
+    return {
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: SITE_NAME },
-      { name: "description", content: `${SITE_TAGLINE}: grava el teu pòdcast amb efectes i edició amb IA.` },
+      { name: "description", content: description },
       { name: "theme-color", content: "#10182B" },
       { property: "og:site_name", content: SITE_NAME },
       { property: "og:title", content: SITE_NAME },
-      { property: "og:description", content: `${SITE_TAGLINE}: grava, afegeix efectes i edita amb IA.` },
+      { property: "og:description", content: ogDescription },
       { property: "og:type", content: "website" },
-      { property: "og:locale", content: "ca_ES" },
+      { property: "og:locale", content: lang === "es" ? "es_ES" : lang === "en" ? "en_GB" : "ca_ES" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: SITE_NAME },
-      { name: "twitter:description", content: `${SITE_TAGLINE}: grava, afegeix efectes i edita amb IA.` },
+      { name: "twitter:description", content: ogDescription },
     ],
     links: [
       {
@@ -100,7 +112,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "apple-touch-icon", href: "/favicon.svg" },
     ],
-  }),
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -123,14 +136,27 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const loaderData = Route.useLoaderData();
+  const [lang, setLang] = useState<Lang>(loaderData?.lang ?? "ca");
+
+  useEffect(() => {
+    // Si el navegador tenia la llengua desada (localStorage) però la galeta no
+    // ha arribat al servidor, ens hi alineem un cop hidratats.
+    const stored = readStoredLang();
+    if (stored && stored !== lang) setLang(stored);
+    document.documentElement.lang = stored ?? lang;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <CookieNotice />
-      </AuthProvider>
+      <LangProvider initialLang={lang} onChange={setLang}>
+        <AuthProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <CookieNotice />
+        </AuthProvider>
+      </LangProvider>
     </QueryClientProvider>
   );
 }

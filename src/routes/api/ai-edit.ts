@@ -13,7 +13,7 @@ export interface AiEditResult {
   consejos: string[];
 }
 
-const PROMPT = `Ets un editor de pòdcast escolar. Escolta l'àudio adjunt (una gravació feta per un alumne) i respon NOMÉS amb un JSON amb aquest format exacte:
+const promptFor = (noVoiceTitle: string, writeIn: string) => `Ets un editor de pòdcast escolar. Escolta l'àudio adjunt (una gravació feta per un alumne) i respon NOMÉS amb un JSON amb aquest format exacte:
 {"transcript": string, "titulo": string, "resumen": string, "capitulos": [{"tiempo": "mm:ss", "titulo": string}], "consejos": [string]}
 
 - "transcript": transcripció completa i fidel del que se sent a l'àudio.
@@ -22,13 +22,20 @@ const PROMPT = `Ets un editor de pòdcast escolar. Escolta l'àudio adjunt (una 
 - "capitulos": marquen les parts del programa (màxim 5), amb el temps aproximat on comencen.
 - "consejos": exactament 3 recomanacions senzilles i motivadores per millorar la pròxima gravació, en llenguatge clar per a alumnes.
 
-Si no se sent cap veu a l'àudio, retorna transcript buit, titulo "Gravació sense veu detectada", un resumen explicant-ho, capitulos buit, i consejos amb suggeriments per gravar millor (parlar més a prop del micròfon, gravar en un lloc silenciós, fer una prova curta abans).
+Si no se sent cap veu a l'àudio, retorna transcript buit, titulo "${noVoiceTitle}", un resumen explicant-ho, capitulos buit, i consejos amb suggeriments per gravar millor (parlar més a prop del micròfon, gravar en un lloc silenciós, fer una prova curta abans).
 
-Escriu sempre en català.`;
+${writeIn}`;
 
 async function fileToBase64(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   return Buffer.from(buffer).toString("base64");
+}
+
+/** Missatges (i llengua de sortida de la IA) en la llengua de qui fa la petició. */
+async function msg(key: keyof typeof import("../../lib/i18n/messages/serverPodcasts").serverPodcastsMessages, params?: Record<string, string | number>) {
+  const { st } = await import("../../lib/i18n/server");
+  const { serverPodcastsMessages } = await import("../../lib/i18n/messages/serverPodcasts");
+  return st(serverPodcastsMessages, key, params);
 }
 
 export const Route = createFileRoute("/api/ai-edit")({
@@ -42,11 +49,12 @@ export const Route = createFileRoute("/api/ai-edit")({
         const form = await request.formData();
         const file = form.get("audio");
         if (!(file instanceof File)) {
-          return new Response("Falta el audio", { status: 400 });
+          return new Response(await msg("aiMissingAudio"), { status: 400 });
         }
 
         const audioBase64 = await fileToBase64(file);
         const mimeType = file.type || "audio/webm";
+        const prompt = promptFor(await msg("aiNoVoiceTitle"), await msg("aiWriteIn"));
 
         const geminiRes = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -57,7 +65,7 @@ export const Route = createFileRoute("/api/ai-edit")({
               contents: [
                 {
                   parts: [
-                    { text: PROMPT },
+                    { text: prompt },
                     { inline_data: { mime_type: mimeType, data: audioBase64 } },
                   ],
                 },
@@ -87,7 +95,7 @@ export const Route = createFileRoute("/api/ai-edit")({
 
         return Response.json({
           transcript: parsed.transcript ?? "",
-          titulo: parsed.titulo ?? "El meu pòdcast",
+          titulo: parsed.titulo ?? (await msg("aiDefaultTitle")),
           resumen: parsed.resumen ?? "",
           capitulos: Array.isArray(parsed.capitulos) ? parsed.capitulos.slice(0, 5) : [],
           consejos: Array.isArray(parsed.consejos) ? parsed.consejos.slice(0, 3) : [],

@@ -4,6 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { useAuth } from "../lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { JoinClassDialog } from "./JoinClassDialog";
+import { useT } from "@/lib/i18n";
+import { authButtonMessages as m } from "@/lib/i18n/messages/authButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +39,7 @@ function GoogleIcon() {
 }
 
 export function AuthButton() {
+  const t = useT(m);
   const { user, role, classId, isSuperAdmin, loading, signInWithGoogle, signOut } = useAuth();
   const [joinOpen, setJoinOpen] = useState(false);
 
@@ -51,8 +54,8 @@ export function AuthButton() {
         className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
       >
         <GoogleIcon />
-        <span className="hidden sm:inline">Entra amb Google</span>
-        <span className="sm:hidden">Entra</span>
+        <span className="hidden sm:inline">{t("signIn")}</span>
+        <span className="sm:hidden">{t("signInShort")}</span>
       </button>
     );
   }
@@ -75,44 +78,51 @@ export function AuthButton() {
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link to="/espai">
-              <User className="size-4" /> El meu espai
+              <User className="size-4" /> {t("mySpace")}
             </Link>
           </DropdownMenuItem>
           {role === "coordinador" && (
             <DropdownMenuItem asChild>
               <Link to="/coordinador">
-                <Settings className="size-4" /> Panell de coordinador
+                <Settings className="size-4" /> {t("coordinadorPanel")}
               </Link>
             </DropdownMenuItem>
           )}
           {isSuperAdmin && (
             <DropdownMenuItem asChild>
               <Link to="/superadmin">
-                <ShieldCheck className="size-4" /> Panell de super admin
+                <ShieldCheck className="size-4" /> {t("superAdminPanel")}
               </Link>
             </DropdownMenuItem>
           )}
-          {role === "alumne" && !classId && (
+          {(role === "docent" || role === "coordinador") && (
+            <DropdownMenuItem asChild>
+              <Link to="/mestre">
+                <GraduationCap className="size-4" /> {t("teacherPanel")}
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {role === "alumne" && (
             <DropdownMenuItem onClick={() => setJoinOpen(true)}>
-              <Users className="size-4" /> Uneix-te a una classe
+              <Users className="size-4" /> {classId ? t("myClasses") : t("joinClass")}
             </DropdownMenuItem>
           )}
           {role === "alumne" && (
             <DropdownMenuItem asChild>
               <Link to="/registre">
-                <GraduationCap className="size-4" /> Vull ser docent
+                <GraduationCap className="size-4" /> {t("wantDocent")}
               </Link>
             </DropdownMenuItem>
           )}
           {role !== "coordinador" && (
             <DropdownMenuItem asChild>
               <Link to="/registre">
-                <School className="size-4" /> Vull donar d'alta un centre
+                <School className="size-4" /> {t("wantSchool")}
               </Link>
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={() => void signOut()}>
-            <LogOut className="size-4" /> Surt
+            <LogOut className="size-4" /> {t("signOut")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

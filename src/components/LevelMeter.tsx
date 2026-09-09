@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n";
+import { levelMeterMessages as m } from "@/lib/i18n/messages/levelMeter";
 
 interface Props {
   analyser: AnalyserNode | null;
@@ -7,15 +9,16 @@ interface Props {
 
 type Level = "silenci" | "baix" | "be" | "alt";
 
-const COPY: Record<Level, { text: string; className: string }> = {
-  silenci: { text: "No et sento — parla més a prop del micròfon", className: "text-muted-foreground" },
-  baix: { text: "Massa fluix — acosta't o parla més alt", className: "text-amber-400" },
-  be: { text: "Volum perfecte! Continua així", className: "text-emerald-400" },
-  alt: { text: "Massa fort — allunya't una mica del micròfon", className: "text-destructive" },
+const COPY: Record<Level, { key: keyof typeof m; className: string }> = {
+  silenci: { key: "silence", className: "text-muted-foreground" },
+  baix: { key: "tooQuiet", className: "text-amber-400" },
+  be: { key: "perfect", className: "text-emerald-400" },
+  alt: { key: "tooLoud", className: "text-destructive" },
 };
 
 /** Mesurador de veu en directe: avisa l'alumne si parla massa fluix o massa fort. */
 export function LevelMeter({ analyser, active }: Props) {
+  const t = useT(m);
   const [rms, setRms] = useState(0);
   const [peak, setPeak] = useState(0);
   const raf = useRef(0);
@@ -57,8 +60,8 @@ export function LevelMeter({ analyser, active }: Props) {
   return (
     <div className="mt-4 rounded-2xl border border-border bg-secondary/30 p-3">
       <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <span>Nivell de veu</span>
-        <span className={copy.className}>{copy.text}</span>
+        <span>{t("voiceLevel")}</span>
+        <span className={copy.className}>{t(copy.key)}</span>
       </div>
       <div className="relative mt-2 h-3 w-full overflow-hidden rounded-full bg-background">
         {/* zona recomanada */}
@@ -71,9 +74,9 @@ export function LevelMeter({ analyser, active }: Props) {
         />
       </div>
       <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-        <span>Fluix</span>
-        <span>Bé</span>
-        <span>Massa fort</span>
+        <span>{t("scaleQuiet")}</span>
+        <span>{t("scaleGood")}</span>
+        <span>{t("scaleLoud")}</span>
       </div>
     </div>
   );

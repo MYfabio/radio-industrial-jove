@@ -5,6 +5,8 @@ import { FileText, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { acceptTermsFn } from "@/lib/settings.functions";
 import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
+import { acceptTermsGateMessages as m } from "@/lib/i18n/messages/acceptTermsGate";
 
 /**
  * Bloqueja l'accés a un panell (mestre, coordinador) fins que la persona
@@ -12,6 +14,7 @@ import { useAuth } from "@/lib/auth";
  * aproven el contingut que es publica, així que cal que ho tinguin clar.
  */
 export function AcceptTermsGate({ children }: { children: React.ReactNode }) {
+  const t = useT(m);
   const { termsAcceptedAt, refreshProfile } = useAuth();
   const accept = useServerFn(acceptTermsFn);
   const [checked, setChecked] = useState(false);
@@ -35,14 +38,13 @@ export function AcceptTermsGate({ children }: { children: React.ReactNode }) {
         <FileText className="size-6" />
       </span>
       <div className="max-w-md">
-        <p className="text-lg font-semibold">Abans de continuar</p>
+        <p className="text-lg font-semibold">{t("title")}</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Aquest panell et permet aprovar i publicar contingut de l'alumnat. Com a docent o
-          coordinador/a, ets tu qui en supervisa i n'és responsable — llegeix les{" "}
+          {t("introBefore")}{" "}
           <Link to="/termes" target="_blank" className="text-accent hover:underline">
-            condicions d'ús
+            {t("termsLink")}
           </Link>{" "}
-          abans de fer-ho servir.
+          {t("introAfter")}
         </p>
       </div>
       <label className="flex max-w-md items-start gap-2 text-left text-sm">
@@ -52,12 +54,11 @@ export function AcceptTermsGate({ children }: { children: React.ReactNode }) {
           onChange={(e) => setChecked(e.target.checked)}
           className="mt-1 size-4"
         />
-        He llegit i accepto les condicions d'ús, i entenc que la supervisió i responsabilitat del
-        contingut que aprovi és meva.
+        {t("checkboxLabel")}
       </label>
       <Button onClick={() => void confirm()} disabled={!checked || busy}>
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-        Accepto i continuo
+        {t("accept")}
       </Button>
     </main>
   );

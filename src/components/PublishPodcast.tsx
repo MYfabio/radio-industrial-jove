@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { publishPodcast } from "@/lib/publishPodcast";
 import { CANVA_COVER_TEMPLATE_URL } from "@/lib/siteConfig";
+import { localeOf, useLang, useT } from "@/lib/i18n";
+import { publishPodcastMessages as m } from "@/lib/i18n/messages/publishPodcast";
 
 const COVER_ICONS = ["🎙️", "📻", "📰", "🎧", "🌍", "⚽", "🔬", "🎭", "🐾", "🎵", "🍕", "🚀"];
 
@@ -26,6 +28,8 @@ export function PublishPodcast({
   defaultDesc = "",
   template,
 }: Props) {
+  const t = useT(m);
+  const { lang } = useLang();
   const [title, setTitle] = useState(defaultTitle);
   const [desc, setDesc] = useState(defaultDesc);
   const [cat, setCat] = useState("");
@@ -44,11 +48,11 @@ export function PublishPodcast({
   const pickCover = (file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("La caràtula ha de ser una imatge (JPG o PNG).");
+      setError(t("coverNotImage"));
       return;
     }
     if (file.size > 3 * 1024 * 1024) {
-      setError("La imatge és massa gran (màxim 3 MB).");
+      setError(t("coverTooBig"));
       return;
     }
     setError(null);
@@ -58,8 +62,8 @@ export function PublishPodcast({
 
   const submit = async () => {
     const blob = getBlob();
-    if (!blob) return setError("Encara no hi ha cap gravació per publicar.");
-    if (!title.trim()) return setError("Posa-hi un títol abans de publicar.");
+    if (!blob) return setError(t("noRecording"));
+    if (!title.trim()) return setError(t("titleRequired"));
 
     setSending(true);
     setError(null);
@@ -83,7 +87,7 @@ export function PublishPodcast({
       });
       setDone({ id: row.id });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No s'ha pogut publicar el pòdcast.");
+      setError(e instanceof Error ? e.message : t("publishFailed"));
     } finally {
       setSending(false);
     }
@@ -94,11 +98,11 @@ export function PublishPodcast({
       <div className="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
         <CheckCircle2 className="mt-0.5 size-5 text-emerald-400" />
         <div className="text-sm">
-          <p className="font-semibold">Enviat! Pòdcast #{done.id}</p>
+          <p className="font-semibold">{t("sentTitle", { id: done.id })}</p>
           <p className="text-muted-foreground">
             {scheduled && publishAt
-              ? `Quan el mestre l'aprovi, apareixerà al mur el ${new Date(publishAt).toLocaleString("ca-ES")}.`
-              : "Queda pendent de revisió. Quan el mestre l'aprovi, sortirà al mur de la classe."}
+              ? t("scheduledInfo", { date: new Date(publishAt).toLocaleString(localeOf(lang)) })
+              : t("pendingInfo")}
           </p>
         </div>
       </div>
@@ -109,52 +113,52 @@ export function PublishPodcast({
     <div className="mt-4 space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Label htmlFor="p-title">Títol *</Label>
-          <Input id="p-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="El pòdcast de 5è B" />
+          <Label htmlFor="p-title">{t("titleLabel")}</Label>
+          <Input id="p-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("titlePlaceholder")} />
         </div>
         <div className="sm:col-span-2">
-          <Label htmlFor="p-desc">Descripció</Label>
-          <Textarea id="p-desc" rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="De què parla el vostre pòdcast?" />
+          <Label htmlFor="p-desc">{t("descLabel")}</Label>
+          <Textarea id="p-desc" rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={t("descPlaceholder")} />
         </div>
         <div>
-          <Label htmlFor="p-author">Qui el fa</Label>
-          <Input id="p-author" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Marta i Pau" />
+          <Label htmlFor="p-author">{t("authorLabel")}</Label>
+          <Input id="p-author" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder={t("authorPlaceholder")} />
         </div>
         <div>
-          <Label htmlFor="p-cat">Categoria</Label>
-          <Input id="p-cat" value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Notícies" />
+          <Label htmlFor="p-cat">{t("catLabel")}</Label>
+          <Input id="p-cat" value={cat} onChange={(e) => setCat(e.target.value)} placeholder={t("catPlaceholder")} />
         </div>
         <div className="sm:col-span-2">
-          <Label htmlFor="p-tags">Etiquetes (separades per comes)</Label>
-          <Input id="p-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="escola, natura, entrevista" />
+          <Label htmlFor="p-tags">{t("tagsLabel")}</Label>
+          <Input id="p-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t("tagsPlaceholder")} />
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-secondary/30 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Caràtula</p>
-        <p className="mt-1 text-sm text-muted-foreground">Puja una foto o tria una icona per al mur.</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("coverTitle")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("coverIntro")}</p>
         <a
           href={CANVA_COVER_TEMPLATE_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20"
         >
-          <Palette className="size-3.5" /> Fes la caràtula amb la plantilla de Canva
+          <Palette className="size-3.5" /> {t("canvaLink")}
         </a>
         <p className="mt-1 text-xs text-muted-foreground">
-          Obre la plantilla, personalitza-la amb el teu títol, descarrega-la com a imatge (PNG o JPG) i puja-la aquí baix.
+          {t("canvaHelp")}
         </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {coverPreview ? (
             <div className="relative">
-              <img src={coverPreview} alt="Caràtula triada" className="size-20 rounded-xl object-cover" />
+              <img src={coverPreview} alt={t("coverAlt")} className="size-20 rounded-xl object-cover" />
               <button
                 onClick={() => {
                   setCoverFile(null);
                   setCoverPreview(null);
                 }}
-                aria-label="Treure la foto"
+                aria-label={t("removePhoto")}
                 className="absolute -right-2 -top-2 rounded-full border border-border bg-card p-1 text-muted-foreground hover:text-destructive"
               >
                 <X className="size-3.5" />
@@ -165,7 +169,7 @@ export function PublishPodcast({
           )}
 
           <Button type="button" variant="secondary" onClick={() => coverInput.current?.click()}>
-            <ImagePlus className="size-4" /> Pujar una foto
+            <ImagePlus className="size-4" /> {t("uploadPhoto")}
           </Button>
           <input
             ref={coverInput}
@@ -183,7 +187,7 @@ export function PublishPodcast({
                 key={emoji}
                 onClick={() => setIcon(emoji)}
                 aria-pressed={icon === emoji}
-                aria-label={`Triar la icona ${emoji}`}
+                aria-label={t("pickIcon", { emoji })}
                 className={`rounded-xl border p-2 text-xl transition-transform hover:scale-110 ${
                   icon === emoji ? "border-accent bg-accent/20" : "border-border bg-card"
                 }`}
@@ -203,10 +207,10 @@ export function PublishPodcast({
             onChange={(e) => setScheduled(e.target.checked)}
             className="size-4 accent-current"
           />
-          Programar la publicació
+          {t("scheduleLabel")}
         </label>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tria el dia i l'hora en què vols que aparegui al mur (un cop aprovat).
+          {t("scheduleHelp")}
         </p>
         {scheduled && (
           <Input
@@ -226,7 +230,7 @@ export function PublishPodcast({
 
       <Button size="lg" onClick={() => void submit()} disabled={sending}>
         {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-        {sending ? "Enviant..." : "Publicar el pòdcast"}
+        {sending ? t("sending") : t("publish")}
       </Button>
     </div>
   );

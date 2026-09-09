@@ -17,7 +17,32 @@ function escapeHtml(text: string): string {
  * Obre una finestra amb el guió de la plantilla en un format net per
  * imprimir o desar en PDF (amb el diàleg d'impressió del navegador).
  */
-export function printTemplateGuide(template: PodcastTemplate): void {
+export interface PrintGuideLabels {
+  lang: string;
+  script: string;
+  printButton: string;
+  target: string;
+  intro: string;
+  steps: string;
+  outro: string;
+  effects: string;
+}
+
+const DEFAULT_LABELS: PrintGuideLabels = {
+  lang: "ca",
+  script: "Guió",
+  printButton: "Imprimeix / Desa en PDF",
+  target: "objectiu",
+  intro: "Intro (llegeix-la tal qual)",
+  steps: "Guió pas a pas",
+  outro: "Outro (per acomiadar-te)",
+  effects: "Efectes de so recomanats",
+};
+
+export function printTemplateGuide(
+  template: PodcastTemplate,
+  labels: PrintGuideLabels = DEFAULT_LABELS,
+): void {
   const win = window.open("", "_blank", "width=800,height=900");
   if (!win) return;
 
@@ -43,10 +68,10 @@ export function printTemplateGuide(template: PodcastTemplate): void {
     .join("");
 
   win.document.write(`<!doctype html>
-<html lang="ca">
+<html lang="${escapeHtml(labels.lang)}">
 <head>
 <meta charset="utf-8">
-<title>Guió — ${escapeHtml(template.nombre)}</title>
+<title>${escapeHtml(labels.script)} — ${escapeHtml(template.nombre)}</title>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -120,20 +145,20 @@ export function printTemplateGuide(template: PodcastTemplate): void {
 </style>
 </head>
 <body>
-  <button class="print-btn" onclick="window.print()">🖨️ Imprimeix / Desa en PDF</button>
+  <button class="print-btn" onclick="window.print()">🖨️ ${escapeHtml(labels.printButton)}</button>
   <h1>${escapeHtml(template.emoji)} ${escapeHtml(template.nombre)}</h1>
-  <p class="subtitle">${escapeHtml(template.descripcion)} — objectiu: ${formatTime(template.duracionObjetivo)}</p>
+  <p class="subtitle">${escapeHtml(template.descripcion)} — ${escapeHtml(labels.target)}: ${formatTime(template.duracionObjetivo)}</p>
 
-  <h2>Intro (llegeix-la tal qual)</h2>
+  <h2>${escapeHtml(labels.intro)}</h2>
   <p class="callout">${escapeHtml(template.intro)}</p>
 
-  <h2>Guió pas a pas</h2>
+  <h2>${escapeHtml(labels.steps)}</h2>
   <ol>${stepsHtml}</ol>
 
-  <h2>Outro (per acomiadar-te)</h2>
+  <h2>${escapeHtml(labels.outro)}</h2>
   <p class="callout">${escapeHtml(template.outro)}</p>
 
-  <h2>Efectes de so recomanats</h2>
+  <h2>${escapeHtml(labels.effects)}</h2>
   <p>${effectsHtml}</p>
 </body>
 </html>`);

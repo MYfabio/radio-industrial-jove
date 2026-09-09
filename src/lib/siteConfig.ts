@@ -6,6 +6,17 @@
 export const SITE_NAME = "Ràdio Escolar";
 export const SITE_TAGLINE = "Estudi de ràdio per a alumnes";
 
+/** El mateix eslogan en les tres llengües de la interfície (català per defecte). */
+export const SITE_TAGLINES = {
+  ca: SITE_TAGLINE,
+  es: "Estudio de radio para alumnos",
+  en: "Radio studio for students",
+} as const;
+
+export function siteTagline(lang: keyof typeof SITE_TAGLINES): string {
+  return SITE_TAGLINES[lang] ?? SITE_TAGLINE;
+}
+
 /** Adreça pública del lloc (per a SEO: canonical, og:url, sitemap). */
 export const SITE_URL = "https://www.radioescolar.cat";
 

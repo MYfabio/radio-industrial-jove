@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "./ui/button";
+import { useT } from "@/lib/i18n";
+import { cookieNoticeMessages as m } from "@/lib/i18n/messages/cookieNotice";
 
 const STORAGE_KEY = "cookieNoticeSeen";
 
@@ -10,6 +12,7 @@ const STORAGE_KEY = "cookieNoticeSeen";
  * No cal un gestor de consentiment perquè no hi ha cookies opcionals a triar.
  */
 export function CookieNotice() {
+  const t = useT(m);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -35,15 +38,14 @@ export function CookieNotice() {
     <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-3">
       <div className="flex w-full max-w-xl flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-lg">
         <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-          Aquest lloc només fa servir una galeta tècnica per mantenir la teva sessió quan inicies sessió amb Google.
-          No fem servir cookies de publicitat ni de seguiment.{" "}
+          {t("text")}{" "}
           <Link to="/privacitat" className="text-accent hover:underline">
-            Més informació
+            {t("more")}
           </Link>
           .
         </p>
         <Button size="sm" onClick={dismiss}>
-          D'acord
+          {t("ok")}
         </Button>
       </div>
     </div>

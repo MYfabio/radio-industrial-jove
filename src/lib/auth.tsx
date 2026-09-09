@@ -3,6 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../integrations/supabase/client";
 import { fetchMyProfile } from "./settings.functions";
 import type { Role } from "./settings.server";
+import { takePendingJoin } from "./pendingJoin";
 
 interface AuthState {
   user: User | null;
@@ -71,6 +72,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  // Si l'alumne ha obert l'enllaç d'una classe sense sessió, en tornar de
+  // Google el portem a /uneix/$code perquè s'hi afegeixi.
+  useEffect(() => {
+    if (!session?.user) return;
+    const code = takePendingJoin();
+    if (code && !window.location.pathname.startsWith("/uneix/")) {
+      window.location.replace(`/uneix/${encodeURIComponent(code)}`);
+    }
+  }, [session?.user]);
 
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({

@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { useT } from "@/lib/i18n";
+import { waveformMessages as m } from "@/lib/i18n/messages/waveform";
 
 interface WaveformProps {
   analyser: AnalyserNode | null;
@@ -10,6 +12,7 @@ interface WaveformProps {
 
 /** Pista de onda: dibuja en vivo lo que se está grabando y deja el rastro. */
 export function Waveform({ analyser, recording, paused, className = "h-40" }: WaveformProps) {
+  const t = useT(m);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const historyRef = useRef<number[]>([]);
   const frameRef = useRef<number>(0);
@@ -88,7 +91,7 @@ export function Waveform({ analyser, recording, paused, className = "h-40" }: Wa
     <canvas
       ref={canvasRef}
       className={`w-full rounded-xl bg-secondary/40 ${className}`}
-      aria-label="Pista de onda de la grabación"
+      aria-label={t("label")}
     />
   );
 }
