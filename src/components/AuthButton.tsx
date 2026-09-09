@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { LogOut, Settings, Users, User, ShieldCheck, GraduationCap, School } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import {
+  LogOut,
+  Settings,
+  Users,
+  User,
+  ShieldCheck,
+  GraduationCap,
+  School,
+} from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "../lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { JoinClassDialog } from "./JoinClassDialog";
@@ -40,11 +48,29 @@ function GoogleIcon() {
 
 export function AuthButton() {
   const t = useT(m);
-  const { user, role, classId, isSuperAdmin, loading, signInWithGoogle, signOut } = useAuth();
+  const {
+    user,
+    role,
+    classId,
+    isSuperAdmin,
+    loading,
+    signInWithGoogle,
+    signOut,
+  } = useAuth();
+  const navigate = useNavigate();
+
+  // En sortir, portem la persona a la pantalla de comiat: així queda clar que
+  // ha tancat la sessió (sovint és un ordinador compartit de l'aula).
+  const leave = async () => {
+    await signOut();
+    await navigate({ to: "/adeu" });
+  };
   const [joinOpen, setJoinOpen] = useState(false);
 
   if (loading) {
-    return <div className="size-8 shrink-0 animate-pulse rounded-full bg-secondary" />;
+    return (
+      <div className="size-8 shrink-0 animate-pulse rounded-full bg-secondary" />
+    );
   }
 
   if (!user) {
@@ -60,7 +86,10 @@ export function AuthButton() {
     );
   }
 
-  const name = (user.user_metadata?.["full_name"] as string | undefined) ?? user.email ?? "";
+  const name =
+    (user.user_metadata?.["full_name"] as string | undefined) ??
+    user.email ??
+    "";
   const avatarUrl = user.user_metadata?.["avatar_url"] as string | undefined;
   const initial = name.charAt(0).toUpperCase();
 
@@ -74,7 +103,9 @@ export function AuthButton() {
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel className="max-w-48 truncate">{name}</DropdownMenuLabel>
+          <DropdownMenuLabel className="max-w-48 truncate">
+            {name}
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link to="/espai">
@@ -104,7 +135,8 @@ export function AuthButton() {
           )}
           {role === "alumne" && (
             <DropdownMenuItem onClick={() => setJoinOpen(true)}>
-              <Users className="size-4" /> {classId ? t("myClasses") : t("joinClass")}
+              <Users className="size-4" />{" "}
+              {classId ? t("myClasses") : t("joinClass")}
             </DropdownMenuItem>
           )}
           {role === "alumne" && (
@@ -121,7 +153,7 @@ export function AuthButton() {
               </Link>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => void signOut()}>
+          <DropdownMenuItem onClick={() => void leave()}>
             <LogOut className="size-4" /> {t("signOut")}
           </DropdownMenuItem>
         </DropdownMenuContent>

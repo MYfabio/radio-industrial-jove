@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdeuRouteImport } from './routes/adeu'
 import { Route as AjudaRouteImport } from './routes/ajuda'
 import { Route as CoordinadorRouteImport } from './routes/coordinador'
 import { Route as EspaiRouteImport } from './routes/espai'
@@ -32,6 +33,11 @@ import { Route as ApiPublicSoundIdRouteImport } from './routes/api/public/sound/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdeuRoute = AdeuRouteImport.update({
+  id: '/adeu',
+  path: '/adeu',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AjudaRoute = AjudaRouteImport.update({
@@ -127,6 +133,7 @@ const ApiPublicSoundIdRoute = ApiPublicSoundIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adeu': typeof AdeuRoute
   '/ajuda': typeof AjudaRoute
   '/coordinador': typeof CoordinadorRoute
   '/espai': typeof EspaiRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adeu': typeof AdeuRoute
   '/ajuda': typeof AjudaRoute
   '/coordinador': typeof CoordinadorRoute
   '/espai': typeof EspaiRoute
@@ -170,6 +178,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/adeu': typeof AdeuRoute
   '/ajuda': typeof AjudaRoute
   '/coordinador': typeof CoordinadorRoute
   '/espai': typeof EspaiRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/adeu'
     | '/ajuda'
     | '/coordinador'
     | '/espai'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/adeu'
     | '/ajuda'
     | '/coordinador'
     | '/espai'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/adeu'
     | '/ajuda'
     | '/coordinador'
     | '/espai'
@@ -257,6 +269,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdeuRoute: typeof AdeuRoute
   AjudaRoute: typeof AjudaRoute
   CoordinadorRoute: typeof CoordinadorRoute
   EspaiRoute: typeof EspaiRoute
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/adeu': {
+      id: '/adeu'
+      path: '/adeu'
+      fullPath: '/adeu'
+      preLoaderRoute: typeof AdeuRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ajuda': {
@@ -417,6 +437,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdeuRoute: AdeuRoute,
   AjudaRoute: AjudaRoute,
   CoordinadorRoute: CoordinadorRoute,
   EspaiRoute: EspaiRoute,

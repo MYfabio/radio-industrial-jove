@@ -6,11 +6,24 @@
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Clock, Tag, Search, Play, Share2, Check, Lock, Heart } from "lucide-react";
+import {
+  Clock,
+  Tag,
+  Search,
+  Play,
+  Share2,
+  Check,
+  Lock,
+  Heart,
+} from "lucide-react";
 import type { PodcastRow } from "@/lib/podcasts.functions";
-import { fetchMyFavoriteIds, toggleFavoriteFn } from "@/lib/favorites.functions";
+import {
+  fetchMyFavoriteIds,
+  toggleFavoriteFn,
+} from "@/lib/favorites.functions";
 import { onPodcastsChanged } from "@/lib/podcastSync";
 import { useAuth } from "@/lib/auth";
+import { trackPlay } from "@/lib/playTracker";
 import { useT } from "@/lib/i18n";
 import { podcastWallMessages as m } from "@/lib/i18n/messages/podcastWall";
 import { AuthButton } from "@/components/AuthButton";
@@ -39,7 +52,8 @@ const PALETTE = [
 
 function colorFor(label: string) {
   let hash = 0;
-  for (let i = 0; i < label.length; i++) hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < label.length; i++)
+    hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
   return PALETTE[hash % PALETTE.length]!;
 }
 
@@ -78,7 +92,11 @@ function Poster({
   const color = colorFor(cat);
   return (
     <div className="group relative w-48 shrink-0 snap-start sm:w-60">
-      <button onClick={onOpen} className="block w-full text-left" aria-label={t("openPodcast", { title: p.title })}>
+      <button
+        onClick={onOpen}
+        className="block w-full text-left"
+        aria-label={t("openPodcast", { title: p.title })}
+      >
         <div
           className="relative aspect-video overflow-hidden rounded-2xl shadow-md transition-transform duration-200 group-hover:scale-[1.04] group-hover:shadow-2xl"
           style={
@@ -96,7 +114,9 @@ function Poster({
             />
           ) : (
             <span className="absolute inset-0 flex items-center justify-center text-3xl font-extrabold tracking-widest text-white/90 sm:text-4xl">
-              {p.cover && /\p{Emoji}/u.test(p.cover) ? p.cover : initialsFor(p.title)}
+              {p.cover && /\p{Emoji}/u.test(p.cover)
+                ? p.cover
+                : initialsFor(p.title)}
             </span>
           )}
           <span
@@ -122,10 +142,14 @@ function Poster({
           aria-pressed={favorited}
           className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur transition-transform hover:scale-110"
         >
-          <Heart className={`size-3.5 ${favorited ? "fill-current text-red-400" : ""}`} />
+          <Heart
+            className={`size-3.5 ${favorited ? "fill-current text-red-400" : ""}`}
+          />
         </button>
       )}
-      <h3 className="mt-1.5 truncate text-sm font-bold leading-tight">{p.title}</h3>
+      <h3 className="mt-1.5 truncate text-sm font-bold leading-tight">
+        {p.title}
+      </h3>
       <p className="truncate text-xs text-muted-foreground">
         {p.author || t("anonymous")} · {formatTime(p.dur)}
       </p>
@@ -157,7 +181,11 @@ function ShareButton({ id, shareParam }: { id: number; shareParam: string }) {
       onClick={() => void share()}
       className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-semibold hover:bg-secondary"
     >
-      {copied ? <Check className="size-4 text-accent" /> : <Share2 className="size-4" />}
+      {copied ? (
+        <Check className="size-4 text-accent" />
+      ) : (
+        <Share2 className="size-4" />
+      )}
       {copied ? t("linkCopied") : t("share")}
     </button>
   );
@@ -194,10 +222,16 @@ function DetailDialog({
           }
         >
           {p.has_cover_image ? (
-            <img src={`/api/public/cover/${p.id}`} alt="" className="size-full object-cover" />
+            <img
+              src={`/api/public/cover/${p.id}`}
+              alt=""
+              className="size-full object-cover"
+            />
           ) : (
             <span className="absolute inset-0 flex items-center justify-center text-6xl font-extrabold tracking-widest text-white/90">
-              {p.cover && /\p{Emoji}/u.test(p.cover) ? p.cover : initialsFor(p.title)}
+              {p.cover && /\p{Emoji}/u.test(p.cover)
+                ? p.cover
+                : initialsFor(p.title)}
             </span>
           )}
         </div>
@@ -211,13 +245,20 @@ function DetailDialog({
             </span>
             <DialogTitle className="text-xl">{p.title}</DialogTitle>
             <DialogDescription className="flex items-center gap-1 text-sm">
-              {p.author || t("anonymous")} <Clock className="ml-2 size-3.5" /> {formatTime(p.dur)}
+              {p.author || t("anonymous")} <Clock className="ml-2 size-3.5" />{" "}
+              {formatTime(p.dur)}
             </DialogDescription>
           </DialogHeader>
 
           {p.desc && <p className="mt-3 text-sm leading-relaxed">{p.desc}</p>}
 
-          <audio controls preload="none" src={`/api/public/audio/${p.id}`} className="mt-4 w-full" />
+          <audio
+            controls
+            preload="none"
+            src={`/api/public/audio/${p.id}`}
+            className="mt-4 w-full"
+            onPlay={() => trackPlay(p.id)}
+          />
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {onToggleFavorite && (
@@ -230,7 +271,9 @@ function DetailDialog({
                     : "border-border hover:bg-secondary"
                 }`}
               >
-                <Heart className={`size-4 ${favorited ? "fill-current" : ""}`} />
+                <Heart
+                  className={`size-4 ${favorited ? "fill-current" : ""}`}
+                />
                 {favorited ? t("inFavorites") : t("favorite")}
               </button>
             )}
@@ -252,7 +295,9 @@ function DetailDialog({
 
           {p.teacher_note && (
             <p className="mt-4 rounded-xl border border-accent/40 bg-accent/10 p-3 text-sm">
-              <span className="font-semibold text-accent">{t("teacherNote")}{" "}</span>
+              <span className="font-semibold text-accent">
+                {t("teacherNote")}{" "}
+              </span>
               {p.teacher_note}
             </p>
           )}
@@ -283,7 +328,9 @@ function CategoryRow({
       <h2 className="mb-2 flex items-center gap-2 text-base font-bold sm:text-lg">
         <span className="size-2.5 rounded-full" style={{ background: color }} />
         {label === "Altres" ? t("otherCategory") : label}
-        <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
+        <span className="text-xs font-normal text-muted-foreground">
+          ({items.length})
+        </span>
       </h2>
       <div className="scrollbar-none -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-2">
         {items.map((p) => (
@@ -292,7 +339,9 @@ function CategoryRow({
             p={p}
             onOpen={() => onOpen(p)}
             favorited={favoriteIds?.has(p.id)}
-            onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(p.id) : undefined}
+            onToggleFavorite={
+              onToggleFavorite ? () => onToggleFavorite(p.id) : undefined
+            }
           />
         ))}
       </div>
@@ -338,8 +387,12 @@ export function PodcastWallView({
   const favoriteIds = user ? new Set(favoriteIdsList ?? []) : null;
 
   const toggleFavorite = (id: number) => {
-    const current = new Set(qc.getQueryData<number[]>(["favorites", "mine"]) ?? []);
-    const next = current.has(id) ? [...current].filter((x) => x !== id) : [...current, id];
+    const current = new Set(
+      qc.getQueryData<number[]>(["favorites", "mine"]) ?? [],
+    );
+    const next = current.has(id)
+      ? [...current].filter((x) => x !== id)
+      : [...current, id];
     qc.setQueryData(["favorites", "mine"], next);
     void toggleFavoriteFn({ data: { podcastId: id } }).catch(() => {
       void qc.invalidateQueries({ queryKey: ["favorites", "mine"] });
@@ -347,7 +400,10 @@ export function PodcastWallView({
   };
 
   useEffect(
-    () => onPodcastsChanged(() => void qc.invalidateQueries({ queryKey: ["podcasts"] })),
+    () =>
+      onPodcastsChanged(
+        () => void qc.invalidateQueries({ queryKey: ["podcasts"] }),
+      ),
     [qc],
   );
 
@@ -365,7 +421,9 @@ export function PodcastWallView({
         (p) =>
           p.title.toLowerCase().includes(q) ||
           (p.author ?? "").toLowerCase().includes(q) ||
-          (Array.isArray(p.tags) ? p.tags : []).some((t) => t.toLowerCase().includes(q)),
+          (Array.isArray(p.tags) ? p.tags : []).some((t) =>
+            t.toLowerCase().includes(q),
+          ),
       )
     : items;
 
@@ -386,7 +444,9 @@ export function PodcastWallView({
       <header className="mb-8 flex flex-wrap items-center gap-3">
         {headerIcon}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{heading}</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            {heading}
+          </h1>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
         <span className="ml-auto flex items-center gap-2">{headerActions}</span>
@@ -448,7 +508,9 @@ export function PodcastWallView({
         canShare={canShare}
         shareParam={shareParam}
         favorited={active ? favoriteIds?.has(active.id) : undefined}
-        onToggleFavorite={user && active ? () => toggleFavorite(active.id) : undefined}
+        onToggleFavorite={
+          user && active ? () => toggleFavorite(active.id) : undefined
+        }
         onClose={() => setActive(null)}
       />
     </>

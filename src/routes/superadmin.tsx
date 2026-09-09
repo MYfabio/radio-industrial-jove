@@ -2,7 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Loader2, ShieldCheck, Plus, ExternalLink, Check, Inbox, Users, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Loader2,
+  ShieldCheck,
+  Plus,
+  ExternalLink,
+  Check,
+  Inbox,
+  Users,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,6 +30,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { SchoolMembersManager } from "@/components/SchoolMembers";
+import { PlayStatsPanel } from "@/components/PlayStats";
 import { useAuth } from "@/lib/auth";
 import {
   createSchoolFn,
@@ -28,7 +40,10 @@ import {
   deleteSchoolFn,
   type SchoolRow,
 } from "@/lib/schools.functions";
-import { fetchAccessRequestsFn, resolveAccessRequestFn } from "@/lib/accessRequests.functions";
+import {
+  fetchAccessRequestsFn,
+  resolveAccessRequestFn,
+} from "@/lib/accessRequests.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
 import { langFromMatches, tr, useT } from "@/lib/i18n";
 import { superadminMessages as m } from "@/lib/i18n/messages/superadmin";
@@ -132,7 +147,9 @@ function SuperAdminPanel() {
     return (
       <main className="studio-bg flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
         <p className="text-lg font-semibold">{tp("restricted")}</p>
-        <p className="max-w-sm text-sm text-muted-foreground">{t("restrictedText")}</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          {t("restrictedText")}
+        </p>
         <Link to="/estudi" className="text-sm text-accent hover:underline">
           {tp("backToStudio")}
         </Link>
@@ -148,7 +165,9 @@ function SuperAdminPanel() {
             <ShieldCheck className="size-6" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("title")}</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              {t("title")}
+            </h1>
             <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
           <span className="ml-auto flex items-center gap-2">
@@ -160,7 +179,8 @@ function SuperAdminPanel() {
 
         <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            <Inbox className="size-4" /> {t("pendingRequests", { count: pendingRequests.length })}
+            <Inbox className="size-4" />{" "}
+            {t("pendingRequests", { count: pendingRequests.length })}
           </h2>
 
           {loadingRequests && (
@@ -179,16 +199,27 @@ function SuperAdminPanel() {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">
-                    {r.name} · <span className="font-normal text-muted-foreground">{r.email}</span>
+                    {r.name} ·{" "}
+                    <span className="font-normal text-muted-foreground">
+                      {r.email}
+                    </span>
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {r.kind === "docent" ? t("wantsDocent") : t("wantsSchool")}
                     {r.school_name && ` · ${r.school_name}`}
                     {r.domain && ` · @${r.domain}`}
                   </p>
-                  {r.message && <p className="mt-1 text-xs text-muted-foreground">"{r.message}"</p>}
+                  {r.message && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      "{r.message}"
+                    </p>
+                  )}
                 </div>
-                <Button size="sm" variant="secondary" onClick={() => void toggleResolved(r.id, true)}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void toggleResolved(r.id, true)}
+                >
                   <Check className="size-3.5" /> {t("resolved")}
                 </Button>
               </div>
@@ -196,30 +227,52 @@ function SuperAdminPanel() {
           </div>
         </section>
 
+        <div className="mb-6">
+          <PlayStatsPanel schools={schools ?? []} />
+        </div>
+
         <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("newSchool")}</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("newSchool")}
+          </h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("schoolName")} />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("schoolName")}
+            />
             <Input
               value={radioName}
               onChange={(e) => setRadioName(e.target.value)}
               placeholder={t("radioNameOptional")}
             />
-            <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder={t("googleDomain")} />
+            <Input
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              placeholder={t("googleDomain")}
+            />
             <Input
               value={coordinadorEmail}
               onChange={(e) => setCoordinadorEmail(e.target.value)}
               placeholder={t("coordinadorEmail")}
             />
           </div>
-          {error && <p className="text-sm text-destructive-foreground">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive-foreground">{error}</p>
+          )}
           <Button onClick={() => void submit()} disabled={creating}>
-            {creating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+            {creating ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Plus className="size-4" />
+            )}
             {t("createSchool")}
           </Button>
         </section>
 
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("schoolsTitle")}</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          {t("schoolsTitle")}
+        </h2>
 
         {isLoading && (
           <p className="flex items-center gap-2 text-muted-foreground">
@@ -243,7 +296,9 @@ function SuperAdminPanel() {
               key={s.id}
               school={s}
               open={openSchoolId === s.id}
-              onToggle={() => setOpenSchoolId((cur) => (cur === s.id ? null : s.id))}
+              onToggle={() =>
+                setOpenSchoolId((cur) => (cur === s.id ? null : s.id))
+              }
               selfUserId={user.id}
             />
           ))}
@@ -281,7 +336,9 @@ function SchoolCard({
   const [name, setName] = useState(school.name);
   const [radioName, setRadioName] = useState(school.radio_name);
   const [domain, setDomain] = useState(school.google_domain ?? "");
-  const [coordinadorEmail, setCoordinadorEmail] = useState(school.coordinador_email ?? "");
+  const [coordinadorEmail, setCoordinadorEmail] = useState(
+    school.coordinador_email ?? "",
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -293,7 +350,15 @@ function SchoolCard({
     setSaved(false);
     setSaveError(null);
     try {
-      await updateSchool({ data: { id: school.id, name, radioName, googleDomain: domain, coordinadorEmail } });
+      await updateSchool({
+        data: {
+          id: school.id,
+          name,
+          radioName,
+          googleDomain: domain,
+          coordinadorEmail,
+        },
+      });
       await qc.invalidateQueries({ queryKey: ["schools"] });
       await qc.invalidateQueries({ queryKey: [...queryKey] });
       setSaved(true);
@@ -325,8 +390,8 @@ function SchoolCard({
         <div className="min-w-0">
           <p className="truncate font-semibold">{school.name}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {school.google_domain ? `@${school.google_domain}` : t("noDomain")} · {t("coordinatorLabel")}{" "}
-            {school.coordinador_email ?? "—"}
+            {school.google_domain ? `@${school.google_domain}` : t("noDomain")}{" "}
+            · {t("coordinatorLabel")} {school.coordinador_email ?? "—"}
           </p>
         </div>
         <span className="flex shrink-0 items-center gap-1.5">
@@ -342,7 +407,11 @@ function SchoolCard({
             className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
           >
             <Users className="size-3.5" /> {open ? t("hide") : t("manage")}
-            {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            {open ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
           </button>
         </span>
       </div>
@@ -350,11 +419,25 @@ function SchoolCard({
       {open && (
         <div className="space-y-6 border-t border-border p-4">
           <section className="space-y-3 rounded-2xl border border-border bg-secondary/30 p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("editSchool")}</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("editSchool")}
+            </h3>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("schoolName")} />
-              <Input value={radioName} onChange={(e) => setRadioName(e.target.value)} placeholder={t("radioNameOptional")} />
-              <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder={t("googleDomain")} />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("schoolName")}
+              />
+              <Input
+                value={radioName}
+                onChange={(e) => setRadioName(e.target.value)}
+                placeholder={t("radioNameOptional")}
+              />
+              <Input
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                placeholder={t("googleDomain")}
+              />
               <Input
                 value={coordinadorEmail}
                 onChange={(e) => setCoordinadorEmail(e.target.value)}
@@ -362,11 +445,23 @@ function SchoolCard({
               />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button size="sm" onClick={() => void save()} disabled={saving || !name.trim()}>
-                {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+              <Button
+                size="sm"
+                onClick={() => void save()}
+                disabled={saving || !name.trim()}
+              >
+                {saving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Check className="size-4" />
+                )}
                 {tp("save")}
               </Button>
-              {saved && <span className="text-sm font-semibold text-accent">{tp("saved")}</span>}
+              {saved && (
+                <span className="text-sm font-semibold text-accent">
+                  {tp("saved")}
+                </span>
+              )}
               <Button
                 size="sm"
                 variant="destructive"
@@ -374,11 +469,17 @@ function SchoolCard({
                 onClick={() => setConfirmDelete(true)}
                 disabled={deleting}
               >
-                {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                {deleting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
                 {t("deleteSchool")}
               </Button>
             </div>
-            {saveError && <p className="text-sm text-destructive-foreground">{saveError}</p>}
+            {saveError && (
+              <p className="text-sm text-destructive-foreground">{saveError}</p>
+            )}
           </section>
 
           {isLoading && (
@@ -387,21 +488,36 @@ function SchoolCard({
             </p>
           )}
           {isError && (
-            <p className="text-sm text-destructive-foreground">{error instanceof Error ? error.message : tp("unknownError")}</p>
+            <p className="text-sm text-destructive-foreground">
+              {error instanceof Error ? error.message : tp("unknownError")}
+            </p>
           )}
-          {data && <SchoolMembersManager data={data} selfUserId={selfUserId} schoolId={school.id} queryKey={queryKey} />}
+          {data && (
+            <SchoolMembersManager
+              data={data}
+              selfUserId={selfUserId}
+              schoolId={school.id}
+              queryKey={queryKey}
+            />
+          )}
         </div>
       )}
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("deleteSchoolTitle", { name: school.name })}</AlertDialogTitle>
-            <AlertDialogDescription>{t("deleteSchoolText")}</AlertDialogDescription>
+            <AlertDialogTitle>
+              {t("deleteSchoolTitle", { name: school.name })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteSchoolText")}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tp("cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void remove()}>{t("deleteSchool")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => void remove()}>
+              {t("deleteSchool")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
