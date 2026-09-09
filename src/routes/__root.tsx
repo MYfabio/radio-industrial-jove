@@ -17,6 +17,7 @@ import { CookieNotice } from "../components/CookieNotice";
 import { LangProvider, readStoredLang, tr, isLang, type Lang } from "../lib/i18n";
 import { fetchLangFn } from "../lib/i18n/functions";
 import { rootMessages } from "../lib/i18n/messages/root";
+import { RoleOnboardingDialog } from "../components/RoleOnboardingDialog";
 
 function NotFoundComponent() {
   return (
@@ -154,6 +155,7 @@ function RootComponent() {
         <AuthProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
+          <RoleOnboardingDialog />
           <CookieNotice />
         </AuthProvider>
       </LangProvider>

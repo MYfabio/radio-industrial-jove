@@ -27,9 +27,11 @@ export interface ProfileRow {
   is_super_admin: boolean;
   terms_accepted_at: string | null;
   display_name: string | null;
+  /** Què va dir que era en el primer accés ("alumne" | "docent"); null = encara no ho ha triat. */
+  declared_role: string | null;
 }
 
-const PROFILE_COLUMNS = `auth_user_id, email, role, class_id, school_id, terms_accepted_at, display_name`;
+const PROFILE_COLUMNS = `auth_user_id, email, role, class_id, school_id, terms_accepted_at, display_name, declared_role`;
 
 export function isSuperAdminEmail(email: string): boolean {
   return email.toLowerCase() === SUPER_ADMIN_EMAIL;
@@ -71,6 +73,7 @@ export async function ensureSettingsSchema(sql: Sql) {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  await sql.unsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS declared_role TEXT`);
 }
 
 function withComputed(row: Record<string, unknown>): ProfileRow {
@@ -84,6 +87,7 @@ function withComputed(row: Record<string, unknown>): ProfileRow {
     is_super_admin: isSuperAdminEmail(email),
     terms_accepted_at: (row["terms_accepted_at"] as string | null) ?? null,
     display_name: (row["display_name"] as string | null) ?? null,
+    declared_role: (row["declared_role"] as string | null) ?? null,
   };
 }
 
@@ -122,6 +126,13 @@ async function applyPendingInvite(sql: Sql, profile: ProfileRow): Promise<Profil
   }
   await sql.unsafe(`DELETE FROM school_invites WHERE id = ${sqlInt(invite["id"] as number)}`);
   return withComputed(updated as Record<string, unknown>);
+}
+
+/** Desa què ha dit que és en el primer accés (alumne o docent). */
+export async function setDeclaredRole(sql: Sql, userId: string, choice: "alumne" | "docent") {
+  await sql.unsafe(
+    `UPDATE profiles SET declared_role = ${sqlText(choice)} WHERE auth_user_id = ${sqlText(userId)}`,
+  );
 }
 
 /** Docents i coordinadors han d'acceptar les condicions d'ús abans d'accedir als seus panells. */
