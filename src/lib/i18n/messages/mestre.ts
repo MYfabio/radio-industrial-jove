@@ -249,4 +249,20 @@ export const mestreMessages = defineMessages({
   deleteAction: { ca: "Esborra", es: "Eliminar", en: "Delete" },
   cancel: { ca: "Cancel·la", es: "Cancelar", en: "Cancel" },
   loading: { ca: "Carregant...", es: "Cargando...", en: "Loading..." },
+  deletePodcast: { ca: "Elimina", es: "Eliminar", en: "Delete" },
+  deletePodcastTitle: {
+    ca: "Eliminar «{title}» del tot?",
+    es: "¿Eliminar «{title}» del todo?",
+    en: 'Delete "{title}" completely?',
+  },
+  deletePodcastText: {
+    ca: "S'esborra el pòdcast amb el seu àudio i la caràtula, també de l'espai de l'alumne. No es pot desfer. Si només vols que no es vegi al mur, fes servir «Treure del mur».",
+    es: "Se borra el pódcast con su audio y su carátula, también del espacio del alumno. No se puede deshacer. Si solo quieres que no se vea en el muro, usa «Quitar del muro».",
+    en: 'The podcast is deleted with its audio and cover, also from the student\'s space. This cannot be undone. If you only want it off the wall, use "Remove from the wall".',
+  },
+  deleted: {
+    ca: "Pòdcast eliminat.",
+    es: "Pódcast eliminado.",
+    en: "Podcast deleted.",
+  },
 });

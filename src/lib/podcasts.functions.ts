@@ -13,13 +13,20 @@ import { describePgError } from "./pgError";
 export type { PodcastRow };
 
 /** Missatges d'error en la llengua de qui fa la petició. */
-async function msg(key: keyof typeof import("./i18n/messages/serverPodcasts").serverPodcastsMessages, params?: Record<string, string | number>) {
+async function msg(
+  key: keyof typeof import("./i18n/messages/serverPodcasts").serverPodcastsMessages,
+  params?: Record<string, string | number>,
+) {
   const { st } = await import("./i18n/server");
-  const { serverPodcastsMessages } = await import("./i18n/messages/serverPodcasts");
+  const { serverPodcastsMessages } =
+    await import("./i18n/messages/serverPodcasts");
   return st(serverPodcastsMessages, key, params);
 }
 
-export interface PublishPodcastInput extends Omit<NewPodcast, "origin" | "classId" | "ownerId"> {}
+export interface PublishPodcastInput extends Omit<
+  NewPodcast,
+  "origin" | "classId" | "ownerId"
+> {}
 
 /**
  * Si qui publica ha iniciat sessió, el pòdcast queda vinculat al seu compte
@@ -31,7 +38,8 @@ export const insertPodcast = createServerFn({ method: "POST" })
   .inputValidator((input: PublishPodcastInput) => input)
   .handler(async ({ context, data }) => {
     const { getSql, createPodcast } = await import("./podcasts.server");
-    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const { ensureSettingsSchema, getOrCreateProfile } =
+      await import("./settings.server");
     const { ensureClassesSchema } = await import("./classes.server");
     const origin = new URL(getRequest().url).origin;
     const sql = getSql();
@@ -40,10 +48,19 @@ export const insertPodcast = createServerFn({ method: "POST" })
       if (context.userId && context.email) {
         await ensureSettingsSchema(sql);
         await ensureClassesSchema(sql);
-        const profile = await getOrCreateProfile(sql, context.userId, context.email);
+        const profile = await getOrCreateProfile(
+          sql,
+          context.userId,
+          context.email,
+        );
         classId = profile.class_id;
       }
-      return await createPodcast(sql, { ...data, classId, ownerId: context.userId, origin });
+      return await createPodcast(sql, {
+        ...data,
+        classId,
+        ownerId: context.userId,
+        origin,
+      });
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {
@@ -75,14 +92,21 @@ export const updatePodcastFn = createServerFn({ method: "POST" })
   .inputValidator((input: UpdatePodcastInput) => input)
   .handler(async ({ context, data }) => {
     const { getSql, updatePodcastFields } = await import("./podcasts.server");
-    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const { ensureSettingsSchema, getOrCreateProfile } =
+      await import("./settings.server");
     const sql = getSql();
     try {
       await ensureSettingsSchema(sql);
       const email = (context.claims.email as string | undefined) ?? "";
       const profile = await getOrCreateProfile(sql, context.userId, email);
       const { id, ...fields } = data;
-      return await updatePodcastFields(sql, id, context.userId, (profile.role as Role) === "coordinador", fields);
+      return await updatePodcastFields(
+        sql,
+        id,
+        context.userId,
+        (profile.role as Role) === "coordinador",
+        fields,
+      );
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {
@@ -99,13 +123,19 @@ export const deletePodcastFn = createServerFn({ method: "POST" })
   .inputValidator((input: DeletePodcastInput) => input)
   .handler(async ({ context, data }) => {
     const { getSql, deletePodcastRow } = await import("./podcasts.server");
-    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const { ensureSettingsSchema, getOrCreateProfile } =
+      await import("./settings.server");
     const sql = getSql();
     try {
       await ensureSettingsSchema(sql);
       const email = (context.claims.email as string | undefined) ?? "";
       const profile = await getOrCreateProfile(sql, context.userId, email);
-      return await deletePodcastRow(sql, data.id, context.userId, (profile.role as Role) === "coordinador");
+      return await deletePodcastRow(
+        sql,
+        data.id,
+        context.userId,
+        profile.role as Role,
+      );
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {
@@ -127,7 +157,12 @@ export const fetchApprovedPodcasts = createServerFn({ method: "GET" }).handler(
     const sql = getSql();
     try {
       const items = await listApproved(sql);
-      return { locked: false, allowedDomain: null, allowExternalSharing: true, items };
+      return {
+        locked: false,
+        allowedDomain: null,
+        allowExternalSharing: true,
+        items,
+      };
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {
@@ -148,42 +183,48 @@ export interface SchoolWallInput {
 export const fetchSchoolWall = createServerFn({ method: "GET" })
   .middleware([optionalSupabaseAuth])
   .inputValidator((input: SchoolWallInput) => input)
-  .handler(async ({ context, data }): Promise<ApprovedPodcastsResult & { radioName: string }> => {
-    const { getSql, listApprovedForSchool } = await import("./podcasts.server");
-    const { getSchoolBySlug } = await import("./schools.server");
-    const sql = getSql();
-    try {
-      const school = await getSchoolBySlug(sql, data.slug);
-      if (!school) throw new Error(await msg("schoolNotFound"));
+  .handler(
+    async ({
+      context,
+      data,
+    }): Promise<ApprovedPodcastsResult & { radioName: string }> => {
+      const { getSql, listApprovedForSchool } =
+        await import("./podcasts.server");
+      const { getSchoolBySlug } = await import("./schools.server");
+      const sql = getSql();
+      try {
+        const school = await getSchoolBySlug(sql, data.slug);
+        if (!school) throw new Error(await msg("schoolNotFound"));
 
-      if (!school.allow_external_sharing && school.google_domain) {
-        const domain = school.google_domain.toLowerCase();
-        const email = context.email?.toLowerCase() ?? "";
-        if (!email.endsWith(`@${domain}`)) {
-          return {
-            locked: true,
-            allowedDomain: school.google_domain,
-            allowExternalSharing: false,
-            items: [],
-            radioName: school.radio_name,
-          };
+        if (!school.allow_external_sharing && school.google_domain) {
+          const domain = school.google_domain.toLowerCase();
+          const email = context.email?.toLowerCase() ?? "";
+          if (!email.endsWith(`@${domain}`)) {
+            return {
+              locked: true,
+              allowedDomain: school.google_domain,
+              allowExternalSharing: false,
+              items: [],
+              radioName: school.radio_name,
+            };
+          }
         }
-      }
 
-      const items = await listApprovedForSchool(sql, school.id);
-      return {
-        locked: false,
-        allowedDomain: school.google_domain,
-        allowExternalSharing: school.allow_external_sharing,
-        items,
-        radioName: school.radio_name,
-      };
-    } catch (err) {
-      throw new Error(describePgError(err));
-    } finally {
-      await sql.end();
-    }
-  });
+        const items = await listApprovedForSchool(sql, school.id);
+        return {
+          locked: false,
+          allowedDomain: school.google_domain,
+          allowExternalSharing: school.allow_external_sharing,
+          items,
+          radioName: school.radio_name,
+        };
+      } catch (err) {
+        throw new Error(describePgError(err));
+      } finally {
+        await sql.end();
+      }
+    },
+  );
 
 export interface ClassWallInput {
   code: string;
@@ -192,28 +233,32 @@ export interface ClassWallInput {
 /** Mur d'una classe (/classe/$code): sempre accessible amb el codi, sense cap altre filtre. */
 export const fetchClassWall = createServerFn({ method: "GET" })
   .inputValidator((input: ClassWallInput) => input)
-  .handler(async ({ data }): Promise<{ items: PodcastRow[]; className: string }> => {
-    const { getSql, listApprovedForClass } = await import("./podcasts.server");
-    const { getClassByInviteCode } = await import("./classes.server");
-    const sql = getSql();
-    try {
-      const cls = await getClassByInviteCode(sql, data.code);
-      if (!cls) throw new Error(await msg("classCodeUnknown"));
-      const items = await listApprovedForClass(sql, cls.id);
-      return { items, className: cls.name };
-    } catch (err) {
-      throw new Error(describePgError(err));
-    } finally {
-      await sql.end();
-    }
-  });
+  .handler(
+    async ({ data }): Promise<{ items: PodcastRow[]; className: string }> => {
+      const { getSql, listApprovedForClass } =
+        await import("./podcasts.server");
+      const { getClassByInviteCode } = await import("./classes.server");
+      const sql = getSql();
+      try {
+        const cls = await getClassByInviteCode(sql, data.code);
+        if (!cls) throw new Error(await msg("classCodeUnknown"));
+        const items = await listApprovedForClass(sql, cls.id);
+        return { items, className: cls.name };
+      } catch (err) {
+        throw new Error(describePgError(err));
+      } finally {
+        await sql.end();
+      }
+    },
+  );
 
 /** Panell del mestre: pòdcasts de les classes pròpies (i de tota l'escola si ets coordinador). */
 export const fetchAllPodcasts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { getSql, listAll } = await import("./podcasts.server");
-    const { ensureSettingsSchema, getOrCreateProfile } = await import("./settings.server");
+    const { ensureSettingsSchema, getOrCreateProfile } =
+      await import("./settings.server");
     const sql = getSql();
     try {
       await ensureSettingsSchema(sql);
@@ -222,7 +267,12 @@ export const fetchAllPodcasts = createServerFn({ method: "GET" })
       if ((profile.role as Role) === "alumne") {
         throw new Error(await msg("docentOnly"));
       }
-      return await listAll(sql, context.userId, (profile.role as Role) === "coordinador", profile.school_id);
+      return await listAll(
+        sql,
+        context.userId,
+        (profile.role as Role) === "coordinador",
+        profile.school_id,
+      );
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {
@@ -243,7 +293,13 @@ export const reviewPodcastFn = createServerFn({ method: "POST" })
     const { getSql, reviewPodcast } = await import("./podcasts.server");
     const sql = getSql();
     try {
-      return await reviewPodcast(sql, data.id, data.status, data.teacherNote, data.publishAt);
+      return await reviewPodcast(
+        sql,
+        data.id,
+        data.status,
+        data.teacherNote,
+        data.publishAt,
+      );
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {

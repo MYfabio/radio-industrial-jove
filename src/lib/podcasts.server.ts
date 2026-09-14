@@ -45,16 +45,34 @@ export async function ensureSchema(sql: Sql) {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_data BYTEA`);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_mime TEXT`);
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_data BYTEA`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS audio_mime TEXT`,
+  );
   await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover TEXT`);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_data BYTEA`);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_mime TEXT`);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS template TEXT`);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS teacher_note TEXT`);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ`);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS class_id INTEGER`);
-  await sql.unsafe(`ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS owner_user_id TEXT`);
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_data BYTEA`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS cover_mime TEXT`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS template TEXT`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS teacher_note TEXT`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS class_id INTEGER`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS owner_user_id TEXT`,
+  );
   await sql.unsafe(`ALTER TABLE podcasts ALTER COLUMN audio_url DROP NOT NULL`);
 }
 
@@ -135,7 +153,9 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
 
   const id = row!["id"] as number;
   const audioUrl = `${data.origin.replace(/\/$/, "")}/api/public/audio/${id}`;
-  await sql.unsafe(`UPDATE podcasts SET audio_url = ${sqlText(audioUrl)} WHERE id = ${sqlInt(id)}`);
+  await sql.unsafe(
+    `UPDATE podcasts SET audio_url = ${sqlText(audioUrl)} WHERE id = ${sqlInt(id)}`,
+  );
   return { id, audio_url: audioUrl };
 }
 
@@ -193,8 +213,12 @@ export async function listAll(
 ) {
   await ensureSchema(sql);
   await ensureClassesSchema(sql);
-  const scopeParts = [`p.class_id IS NULL`, `c.created_by = ${sqlText(requesterId)}`];
-  if (isCoordinador && schoolId !== null) scopeParts.push(`c.school_id = ${sqlInt(schoolId)}`);
+  const scopeParts = [
+    `p.class_id IS NULL`,
+    `c.created_by = ${sqlText(requesterId)}`,
+  ];
+  if (isCoordinador && schoolId !== null)
+    scopeParts.push(`c.school_id = ${sqlInt(schoolId)}`);
   const rows = await sql.unsafe(`
     SELECT ${LIST_COLUMNS} FROM ${LIST_FROM}
     WHERE ${scopeParts.join(" OR ")}
@@ -234,11 +258,20 @@ export interface PodcastEdit {
   tags: string[];
 }
 
-async function assertOwnerOrCoordinador(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
-  const [row] = await sql.unsafe(`SELECT owner_user_id FROM podcasts WHERE id = ${sqlInt(id)}`);
+async function assertOwnerOrCoordinador(
+  sql: Sql,
+  id: number,
+  requesterId: string,
+  isCoordinador: boolean,
+) {
+  const [row] = await sql.unsafe(
+    `SELECT owner_user_id FROM podcasts WHERE id = ${sqlInt(id)}`,
+  );
   if (!row) throw new Error("Aquest pòdcast ja no existeix.");
   if (row["owner_user_id"] !== requesterId && !isCoordinador) {
-    throw new Error("Només qui l'ha publicat (o el coordinador) pot fer aquest canvi.");
+    throw new Error(
+      "Només qui l'ha publicat (o el coordinador) pot fer aquest canvi.",
+    );
   }
 }
 
@@ -259,9 +292,38 @@ export async function updatePodcastFields(
   return { ok: true };
 }
 
-export async function deletePodcastRow(sql: Sql, id: number, requesterId: string, isCoordinador: boolean) {
+/**
+ * Esborra un pòdcast del tot (fitxa, àudio i caràtula). Ho pot fer qui l'ha
+ * publicat, el coordinador, i el docent de la classe on s'ha publicat (o
+ * qualsevol docent si no té classe: són els mateixos que ja el poden revisar).
+ */
+export async function deletePodcastRow(
+  sql: Sql,
+  id: number,
+  requesterId: string,
+  role: "alumne" | "docent" | "coordinador",
+) {
   await ensureSchema(sql);
-  await assertOwnerOrCoordinador(sql, id, requesterId, isCoordinador);
+  await ensureClassesSchema(sql);
+  const [row] = await sql.unsafe(`
+    SELECT p.owner_user_id, p.class_id, c.created_by AS class_owner_id
+      FROM podcasts p LEFT JOIN classes c ON c.id = p.class_id
+     WHERE p.id = ${sqlInt(id)}
+  `);
+  if (!row) throw new Error("Aquest pòdcast ja no existeix.");
+  const isOwner = row["owner_user_id"] === requesterId;
+  const isDocent = role === "docent" || role === "coordinador";
+  const isClassTeacher =
+    isDocent &&
+    (row["class_id"] === null || row["class_owner_id"] === requesterId);
+  if (!isOwner && role !== "coordinador" && !isClassTeacher) {
+    throw new Error(
+      "Només qui l'ha publicat, el docent de la classe o el coordinador poden esborrar-lo.",
+    );
+  }
+  await sql
+    .unsafe(`DELETE FROM podcast_plays WHERE podcast_id = ${sqlInt(id)}`)
+    .catch(() => undefined);
   await sql.unsafe(`DELETE FROM podcasts WHERE id = ${sqlInt(id)}`);
   return { ok: true };
 }
@@ -297,7 +359,9 @@ export async function getAudio(sql: Sql, id: number) {
 }
 
 export async function getCover(sql: Sql, id: number) {
-  const [row] = await sql.unsafe(`SELECT cover_data, cover_mime FROM podcasts WHERE id = ${sqlInt(id)}`);
+  const [row] = await sql.unsafe(
+    `SELECT cover_data, cover_mime FROM podcasts WHERE id = ${sqlInt(id)}`,
+  );
   if (!row || !row["cover_data"]) return null;
   return {
     data: row["cover_data"] as Uint8Array,
