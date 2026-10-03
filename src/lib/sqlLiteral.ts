@@ -10,6 +10,7 @@
  */
 export function sqlText(value: string | null | undefined): string {
   if (value === null || value === undefined) return "NULL";
+  if (typeof value !== "string") throw new Error("Valor de text invàlid per a una consulta SQL.");
   return `'${value.replace(/'/g, "''")}'`;
 }
 
@@ -24,9 +25,15 @@ export function sqlBool(value: boolean): string {
 }
 
 export function sqlTextArray(values: string[] | null | undefined): string {
-  if (!values || values.length === 0) return "'{}'::text[]";
+  if (values === null || values === undefined) return "'{}'::text[]";
+  // Les dades venen del client: cal comprovar que de veritat és una llista de textos.
+  if (!Array.isArray(values) || values.some((v) => typeof v !== "string")) {
+    throw new Error("Llista de textos invàlida per a una consulta SQL.");
+  }
+  if (values.length === 0) return "'{}'::text[]";
   const items = values.map((v) => `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`).join(",");
-  return `'{${items}}'::text[]`;
+  // El literal d'array va dins de cometes simples: també s'han de doblar, o s'hi pot injectar SQL.
+  return `'{${items.replace(/'/g, "''")}}'::text[]`;
 }
 
 export function sqlBytea(value: Buffer | Uint8Array | null | undefined): string {
