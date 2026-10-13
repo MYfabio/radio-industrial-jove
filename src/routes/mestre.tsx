@@ -41,12 +41,14 @@ import {
   createClassFn,
   fetchMyClasses,
   deleteClassFn,
+  setClassSharingFn,
   type ClassRow,
 } from "@/lib/classes.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
 import { notifyPodcastsChanged } from "@/lib/podcastSync";
 import { useAuth } from "@/lib/auth";
 import { AcceptTermsGate } from "@/components/AcceptTermsGate";
+import { ClassDashboard } from "@/components/ClassDashboard";
 import {
   langFromMatches,
   localeOf,
@@ -309,6 +311,23 @@ function ClassesPanel() {
   const create = useServerFn(createClassFn);
   const list = useServerFn(fetchMyClasses);
   const deleteClass = useServerFn(deleteClassFn);
+  const setSharing = useServerFn(setClassSharingFn);
+  const [sharingId, setSharingId] = useState<number | null>(null);
+
+  const toggleSharing = async (cls: ClassRow) => {
+    setSharingId(cls.id);
+    setError(null);
+    try {
+      await setSharing({
+        data: { classId: cls.id, share: !cls.share_to_school },
+      });
+      await qc.invalidateQueries({ queryKey: ["classes"] });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("unknownError"));
+    } finally {
+      setSharingId(null);
+    }
+  };
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [shareToSchool, setShareToSchool] = useState(false);
@@ -471,10 +490,25 @@ function ClassesPanel() {
             >
               <span className="min-w-0 truncate text-sm font-semibold">
                 {c.name}
-                {c.share_to_school && (
-                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
-                    <Radio className="size-2.5" /> {t("schoolBadge")}
-                  </span>
+                {c.school_id !== null && (
+                  <button
+                    onClick={() => void toggleSharing(c)}
+                    disabled={sharingId === c.id}
+                    aria-pressed={c.share_to_school}
+                    title={t("shareHint")}
+                    className={`ml-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+                      c.share_to_school
+                        ? "border-accent/40 bg-accent/15 text-accent"
+                        : "border-border bg-card text-muted-foreground hover:bg-accent/10"
+                    }`}
+                  >
+                    {sharingId === c.id ? (
+                      <Loader2 className="size-2.5 animate-spin" />
+                    ) : (
+                      <Radio className="size-2.5" />
+                    )}
+                    {c.share_to_school ? t("shareOn") : t("shareOff")}
+                  </button>
                 )}
               </span>
               <span className="flex shrink-0 items-center gap-1.5">
@@ -599,6 +633,19 @@ function ClassesPanel() {
   );
 }
 
+/** Quadre de la classe: fa servir la mateixa consulta de classes que ClassesPanel (react-query la comparteix). */
+function DashboardMount() {
+  const { user } = useAuth();
+  const list = useServerFn(fetchMyClasses);
+  const { data: classes } = useQuery({
+    queryKey: ["classes", "meves"],
+    queryFn: () => list({}),
+    enabled: !!user,
+  });
+  if (!classes || classes.length === 0) return null;
+  return <ClassDashboard classes={classes} />;
+}
+
 function TeacherPanel() {
   const t = useT(m);
   const { user, role, loading: authLoading } = useAuth();
@@ -704,6 +751,8 @@ function TeacherPanel() {
           </header>
 
           <ClassesPanel />
+
+          <DashboardMount />
 
           {isLoading && (
             <p className="flex items-center gap-2 text-muted-foreground">

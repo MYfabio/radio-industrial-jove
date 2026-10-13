@@ -265,4 +265,19 @@ export const mestreMessages = defineMessages({
     es: "Pódcast eliminado.",
     en: "Podcast deleted.",
   },
+  shareOn: {
+    ca: "Al mur de l'escola",
+    es: "En el muro del centro",
+    en: "On the school wall",
+  },
+  shareOff: {
+    ca: "Comparteix al mur de l'escola",
+    es: "Compartir en el muro del centro",
+    en: "Share on the school wall",
+  },
+  shareHint: {
+    ca: "Si està activat, els pòdcasts aprovats d'aquesta classe també surten al mur de l'escola. Si no, només es veuen al mur de la classe.",
+    es: "Si está activado, los pódcasts aprobados de esta clase también salen en el muro del centro. Si no, solo se ven en el muro de la clase.",
+    en: "When on, this class's approved podcasts also appear on the school wall. Otherwise they only show on the class wall.",
+  },
 });

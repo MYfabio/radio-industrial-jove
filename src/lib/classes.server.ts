@@ -29,16 +29,23 @@ export async function ensureClassesSchema(sql: Sql) {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
-  await sql.unsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES classes(id)`);
-  await sql.unsafe(`ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER`);
-  await sql.unsafe(`ALTER TABLE classes ADD COLUMN IF NOT EXISTS share_to_school BOOLEAN NOT NULL DEFAULT FALSE`);
+  await sql.unsafe(
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES classes(id)`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER`,
+  );
+  await sql.unsafe(
+    `ALTER TABLE classes ADD COLUMN IF NOT EXISTS share_to_school BOOLEAN NOT NULL DEFAULT FALSE`,
+  );
 }
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sense lletres/números que es confonen
 
 function randomCode(length = 6): string {
   let out = "";
-  for (let i = 0; i < length; i++) out += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  for (let i = 0; i < length; i++)
+    out += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
   return out;
 }
 
@@ -67,7 +74,10 @@ export async function createClass(
   throw new Error("CODE_UNIQUE");
 }
 
-export async function listClassesByOwner(sql: Sql, ownerId: string): Promise<ClassRow[]> {
+export async function listClassesByOwner(
+  sql: Sql,
+  ownerId: string,
+): Promise<ClassRow[]> {
   const rows = await sql.unsafe(`
     SELECT ${CLASS_COLUMNS}
       FROM classes
@@ -77,7 +87,10 @@ export async function listClassesByOwner(sql: Sql, ownerId: string): Promise<Cla
   return rows as unknown as ClassRow[];
 }
 
-export async function listClassesBySchool(sql: Sql, schoolId: number): Promise<ClassRow[]> {
+export async function listClassesBySchool(
+  sql: Sql,
+  schoolId: number,
+): Promise<ClassRow[]> {
   const rows = await sql.unsafe(`
     SELECT ${CLASS_COLUMNS}
       FROM classes
@@ -87,7 +100,11 @@ export async function listClassesBySchool(sql: Sql, schoolId: number): Promise<C
   return rows as unknown as ClassRow[];
 }
 
-export async function joinClassByCode(sql: Sql, userId: string, code: string): Promise<ClassRow | null> {
+export async function joinClassByCode(
+  sql: Sql,
+  userId: string,
+  code: string,
+): Promise<ClassRow | null> {
   const [cls] = await sql.unsafe(`
     SELECT ${CLASS_COLUMNS}
       FROM classes
@@ -105,18 +122,27 @@ export async function addMember(sql: Sql, classId: number, userId: string) {
     VALUES (${sqlInt(classId)}, ${sqlText(userId)})
     ON CONFLICT DO NOTHING
   `);
-  await sql.unsafe(`UPDATE profiles SET class_id = ${sqlInt(classId)} WHERE auth_user_id = ${sqlText(userId)}`);
+  await sql.unsafe(
+    `UPDATE profiles SET class_id = ${sqlInt(classId)} WHERE auth_user_id = ${sqlText(userId)}`,
+  );
 }
 
 /** Totes les classes de què és membre aquest usuari (la seva classe i els subgrups). */
-export async function listMembershipsForUser(sql: Sql, userId: string): Promise<ClassRow[]> {
+export async function listMembershipsForUser(
+  sql: Sql,
+  userId: string,
+): Promise<ClassRow[]> {
   const rows = await sql.unsafe(`
-    SELECT ${CLASS_COLUMNS.split(", ").map((c) => `c.${c}`).join(", ")}
+    SELECT ${CLASS_COLUMNS.split(", ")
+      .map((c) => `c.${c}`)
+      .join(", ")}
       FROM classes c
       JOIN class_members m ON m.class_id = c.id
      WHERE m.auth_user_id = ${sqlText(userId)}
      UNION
-    SELECT ${CLASS_COLUMNS.split(", ").map((c) => `c.${c}`).join(", ")}
+    SELECT ${CLASS_COLUMNS.split(", ")
+      .map((c) => `c.${c}`)
+      .join(", ")}
       FROM classes c
       JOIN profiles p ON p.class_id = c.id
      WHERE p.auth_user_id = ${sqlText(userId)}
@@ -126,27 +152,55 @@ export async function listMembershipsForUser(sql: Sql, userId: string): Promise<
 }
 
 /** Tria quina de les seves classes és l'activa (on van els pòdcasts que publiqui). */
-export async function setActiveClass(sql: Sql, userId: string, classId: number): Promise<boolean> {
+export async function setActiveClass(
+  sql: Sql,
+  userId: string,
+  classId: number,
+): Promise<boolean> {
   const [member] = await sql.unsafe(`
     SELECT 1 FROM class_members WHERE class_id = ${sqlInt(classId)} AND auth_user_id = ${sqlText(userId)}
     UNION SELECT 1 FROM profiles WHERE class_id = ${sqlInt(classId)} AND auth_user_id = ${sqlText(userId)}
   `);
   if (!member) return false;
-  await sql.unsafe(`UPDATE profiles SET class_id = ${sqlInt(classId)} WHERE auth_user_id = ${sqlText(userId)}`);
+  await sql.unsafe(
+    `UPDATE profiles SET class_id = ${sqlInt(classId)} WHERE auth_user_id = ${sqlText(userId)}`,
+  );
   return true;
 }
 
 /** Nombre de pòdcasts vinculats a una classe (per no esborrar-ne cap que en tingui). */
-export async function countPodcastsForClass(sql: Sql, classId: number): Promise<number> {
-  const [row] = await sql.unsafe(`SELECT COUNT(*)::int AS n FROM podcasts WHERE class_id = ${sqlInt(classId)}`);
+export async function countPodcastsForClass(
+  sql: Sql,
+  classId: number,
+): Promise<number> {
+  const [row] = await sql.unsafe(
+    `SELECT COUNT(*)::int AS n FROM podcasts WHERE class_id = ${sqlInt(classId)}`,
+  );
   return (row?.["n"] as number) ?? 0;
 }
 
 /** Esborra una classe buida i en desvincula l'alumnat. */
+/** Activa o desactiva que els pòdcasts aprovats d'una classe surtin al mur de l'escola. */
+export async function setClassSharing(
+  sql: Sql,
+  classId: number,
+  share: boolean,
+) {
+  await sql.unsafe(
+    `UPDATE classes SET share_to_school = ${sqlBool(share)} WHERE id = ${sqlInt(classId)} AND school_id IS NOT NULL`,
+  );
+}
+
 export async function deleteClass(sql: Sql, classId: number) {
-  await sql.unsafe(`UPDATE profiles SET class_id = NULL WHERE class_id = ${sqlInt(classId)}`);
-  await sql.unsafe(`DELETE FROM class_members WHERE class_id = ${sqlInt(classId)}`);
-  await sql.unsafe(`UPDATE school_invites SET class_id = NULL WHERE class_id = ${sqlInt(classId)}`);
+  await sql.unsafe(
+    `UPDATE profiles SET class_id = NULL WHERE class_id = ${sqlInt(classId)}`,
+  );
+  await sql.unsafe(
+    `DELETE FROM class_members WHERE class_id = ${sqlInt(classId)}`,
+  );
+  await sql.unsafe(
+    `UPDATE school_invites SET class_id = NULL WHERE class_id = ${sqlInt(classId)}`,
+  );
   await sql.unsafe(`DELETE FROM classes WHERE id = ${sqlInt(classId)}`);
 }
 
@@ -166,7 +220,10 @@ export async function findOrCreateClassByName(
   return createClass(sql, ownerId, name, schoolId, false);
 }
 
-export async function countMembersByClass(sql: Sql, schoolId: number): Promise<Record<number, number>> {
+export async function countMembersByClass(
+  sql: Sql,
+  schoolId: number,
+): Promise<Record<number, number>> {
   const rows = await sql.unsafe(`
     SELECT c.id, COUNT(DISTINCT u.auth_user_id)::int AS n
       FROM classes c
@@ -183,12 +240,20 @@ export async function countMembersByClass(sql: Sql, schoolId: number): Promise<R
   return out;
 }
 
-export async function getClassById(sql: Sql, id: number): Promise<ClassRow | null> {
-  const [row] = await sql.unsafe(`SELECT ${CLASS_COLUMNS} FROM classes WHERE id = ${sqlInt(id)}`);
+export async function getClassById(
+  sql: Sql,
+  id: number,
+): Promise<ClassRow | null> {
+  const [row] = await sql.unsafe(
+    `SELECT ${CLASS_COLUMNS} FROM classes WHERE id = ${sqlInt(id)}`,
+  );
   return (row as unknown as ClassRow) ?? null;
 }
 
-export async function getClassByInviteCode(sql: Sql, code: string): Promise<ClassRow | null> {
+export async function getClassByInviteCode(
+  sql: Sql,
+  code: string,
+): Promise<ClassRow | null> {
   const [row] = await sql.unsafe(
     `SELECT ${CLASS_COLUMNS} FROM classes WHERE invite_code = ${sqlText(code.trim().toUpperCase())}`,
   );

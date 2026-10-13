@@ -7,7 +7,10 @@ import { describePgError } from "./pgError";
 export type { ClassRow };
 
 /** Missatges d'error en la llengua de qui fa la petició. */
-async function msg(key: keyof typeof import("./i18n/messages/server").serverMessages, params?: Record<string, string | number>) {
+async function msg(
+  key: keyof typeof import("./i18n/messages/server").serverMessages,
+  params?: Record<string, string | number>,
+) {
   const { st } = await import("./i18n/server");
   const { serverMessages } = await import("./i18n/messages/server");
   return st(serverMessages, key, params);
@@ -44,9 +47,16 @@ export const createClassFn = createServerFn({ method: "POST" })
       }
       const name = data.name.trim();
       if (!name) throw new Error(await msg("classNameRequired"));
-      return await createClass(sql, context.userId, name, profile.school_id, data.shareToSchool);
+      return await createClass(
+        sql,
+        context.userId,
+        name,
+        profile.school_id,
+        data.shareToSchool,
+      );
     } catch (err) {
-      if (err instanceof Error && err.message === "CODE_UNIQUE") throw new Error(await msg("codeUnique"));
+      if (err instanceof Error && err.message === "CODE_UNIQUE")
+        throw new Error(await msg("codeUnique"));
       throw new Error(describePgError(err));
     } finally {
       await sql.end();
@@ -93,23 +103,27 @@ export const joinClassFn = createServerFn({ method: "POST" })
 /** Les classes de què és membre l'usuari actual, i quina és l'activa. */
 export const fetchMyMembershipsFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ classes: ClassRow[]; activeClassId: number | null }> => {
-    const { getSql } = await import("./podcasts.server");
-    const { getOrCreateProfile } = await import("./settings.server");
-    const { listMembershipsForUser } = await import("./classes.server");
-    const sql = getSql();
-    try {
-      await ensureAll(sql);
-      const email = (context.claims.email as string | undefined) ?? "";
-      const profile = await getOrCreateProfile(sql, context.userId, email);
-      const classes = await listMembershipsForUser(sql, context.userId);
-      return { classes, activeClassId: profile.class_id };
-    } catch (err) {
-      throw new Error(describePgError(err));
-    } finally {
-      await sql.end();
-    }
-  });
+  .handler(
+    async ({
+      context,
+    }): Promise<{ classes: ClassRow[]; activeClassId: number | null }> => {
+      const { getSql } = await import("./podcasts.server");
+      const { getOrCreateProfile } = await import("./settings.server");
+      const { listMembershipsForUser } = await import("./classes.server");
+      const sql = getSql();
+      try {
+        await ensureAll(sql);
+        const email = (context.claims.email as string | undefined) ?? "";
+        const profile = await getOrCreateProfile(sql, context.userId, email);
+        const classes = await listMembershipsForUser(sql, context.userId);
+        return { classes, activeClassId: profile.class_id };
+      } catch (err) {
+        throw new Error(describePgError(err));
+      } finally {
+        await sql.end();
+      }
+    },
+  );
 
 export interface SetActiveClassInput {
   classId: number;
@@ -145,8 +159,10 @@ export const deleteClassFn = createServerFn({ method: "POST" })
   .inputValidator((input: DeleteClassInput) => input)
   .handler(async ({ context, data }) => {
     const { getSql } = await import("./podcasts.server");
-    const { getOrCreateProfile, isSuperAdminEmail } = await import("./settings.server");
-    const { getClassById, countPodcastsForClass, deleteClass } = await import("./classes.server");
+    const { getOrCreateProfile, isSuperAdminEmail } =
+      await import("./settings.server");
+    const { getClassById, countPodcastsForClass, deleteClass } =
+      await import("./classes.server");
     const sql = getSql();
     try {
       await ensureAll(sql);
@@ -156,7 +172,9 @@ export const deleteClassFn = createServerFn({ method: "POST" })
       if (!cls) throw new Error(await msg("classCodeUnknown"));
       const isOwner = cls.created_by === context.userId;
       const isSchoolCoordinador =
-        profile.role === "coordinador" && profile.school_id !== null && cls.school_id === profile.school_id;
+        profile.role === "coordinador" &&
+        profile.school_id !== null &&
+        cls.school_id === profile.school_id;
       if (!isOwner && !isSchoolCoordinador && !isSuperAdminEmail(email)) {
         throw new Error(await msg("classNotYours"));
       }
@@ -180,13 +198,52 @@ export const fetchClassByCode = createServerFn({ method: "GET" })
   .inputValidator((input: ClassByCodeInput) => input)
   .handler(async ({ data }) => {
     const { getSql } = await import("./podcasts.server");
-    const { getClassByInviteCode, ensureClassesSchema } = await import("./classes.server");
+    const { getClassByInviteCode, ensureClassesSchema } =
+      await import("./classes.server");
     const sql = getSql();
     try {
       await ensureClassesSchema(sql);
       const cls = await getClassByInviteCode(sql, data.code);
       if (!cls) throw new Error(await msg("classCodeUnknown"));
       return cls;
+    } catch (err) {
+      throw new Error(describePgError(err));
+    } finally {
+      await sql.end();
+    }
+  });
+
+export interface SetClassSharingInput {
+  classId: number;
+  share: boolean;
+}
+
+/** Qui ha creat la classe, el coordinador del seu centre o el super admin. */
+export const setClassSharingFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: SetClassSharingInput) => input)
+  .handler(async ({ context, data }) => {
+    const { getSql } = await import("./podcasts.server");
+    const { getOrCreateProfile, isSuperAdminEmail } =
+      await import("./settings.server");
+    const { getClassById, setClassSharing } = await import("./classes.server");
+    const sql = getSql();
+    try {
+      await ensureAll(sql);
+      const email = (context.claims.email as string | undefined) ?? "";
+      const profile = await getOrCreateProfile(sql, context.userId, email);
+      const cls = await getClassById(sql, data.classId);
+      if (!cls) throw new Error(await msg("classCodeUnknown"));
+      const isOwner = cls.created_by === context.userId;
+      const isSchoolCoordinador =
+        profile.role === "coordinador" &&
+        profile.school_id !== null &&
+        cls.school_id === profile.school_id;
+      if (!isOwner && !isSchoolCoordinador && !isSuperAdminEmail(email)) {
+        throw new Error(await msg("classNotYours"));
+      }
+      await setClassSharing(sql, cls.id, data.share === true);
+      return { ok: true };
     } catch (err) {
       throw new Error(describePgError(err));
     } finally {
