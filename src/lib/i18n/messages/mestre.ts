@@ -280,4 +280,39 @@ export const mestreMessages = defineMessages({
     es: "Si está activado, los pódcasts aprobados de esta clase también salen en el muro del centro. Si no, solo se ven en el muro de la clase.",
     en: "When on, this class's approved podcasts also appear on the school wall. Otherwise they only show on the class wall.",
   },
+  tabReview: {
+    ca: "Revisar pòdcasts",
+    es: "Revisar pódcasts",
+    en: "Review podcasts",
+  },
+  tabClasses: { ca: "Les meves classes", es: "Mis clases", en: "My classes" },
+  tabDashboard: {
+    ca: "Quadre de la classe",
+    es: "Cuadro de la clase",
+    en: "Class dashboard",
+  },
+  classWall: { ca: "Mur de l'aula", es: "Muro del aula", en: "Class wall" },
+  schoolWall: {
+    ca: "Mur de l'escola",
+    es: "Muro del centro",
+    en: "School wall",
+  },
+  openWall: { ca: "Mur obert", es: "Muro abierto", en: "Open wall" },
+  openWallHint: {
+    ca: "Pòdcasts publicats fora de qualsevol classe. Els de les teves classes surten al mur de l'aula i, si ho actives, al de l'escola.",
+    es: "Pódcasts publicados fuera de cualquier clase. Los de tus clases salen en el muro del aula y, si lo activas, en el del centro.",
+    en: "Podcasts published outside any class. Your classes' podcasts show on the class wall and, if enabled, on the school wall.",
+  },
+  shareSwitchLabel: {
+    ca: "Surt al mur de l'escola",
+    es: "Sale en el muro del centro",
+    en: "Shown on the school wall",
+  },
+  yes: { ca: "Sí", es: "Sí", en: "Yes" },
+  no: { ca: "No", es: "No", en: "No" },
+  dashboardNoClasses: {
+    ca: "Encara no tens cap classe. Crea'n una a",
+    es: "Aún no tienes ninguna clase. Crea una en",
+    en: "You have no classes yet. Create one in",
+  },
 });

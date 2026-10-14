@@ -1,21 +1,40 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { describePgError } from "./pgError";
-import type { MemberRole, ImportRow, SchoolRow, SchoolMemberRow, SchoolInviteRow } from "./schools.server";
+import type {
+  MemberRole,
+  ImportRow,
+  SchoolRow,
+  SchoolMemberRow,
+  SchoolInviteRow,
+} from "./schools.server";
 import type { ClassRow } from "./classes.server";
 
-export type { MemberRole, ImportRow, SchoolRow, SchoolMemberRow, SchoolInviteRow };
+export type {
+  MemberRole,
+  ImportRow,
+  SchoolRow,
+  SchoolMemberRow,
+  SchoolInviteRow,
+};
 
 /** Missatges d'error en la llengua de qui fa la petició. */
-async function msg(key: keyof typeof import("./i18n/messages/server").serverMessages, params?: Record<string, string | number>) {
+async function msg(
+  key: keyof typeof import("./i18n/messages/server").serverMessages,
+  params?: Record<string, string | number>,
+) {
   const { st } = await import("./i18n/server");
   const { serverMessages } = await import("./i18n/messages/server");
   return st(serverMessages, key, params);
 }
 
-async function requireSuperAdmin(context: { userId: string; claims: Record<string, unknown> }) {
+async function requireSuperAdmin(context: {
+  userId: string;
+  claims: Record<string, unknown>;
+}) {
   const { getSql } = await import("./podcasts.server");
-  const { ensureSettingsSchema, getOrCreateProfile, isSuperAdminEmail } = await import("./settings.server");
+  const { ensureSettingsSchema, getOrCreateProfile, isSuperAdminEmail } =
+    await import("./settings.server");
   const { ensureSchoolsSchema } = await import("./schools.server");
   const { ensureClassesSchema } = await import("./classes.server");
   const sql = getSql();
@@ -50,9 +69,11 @@ export const createSchoolFn = createServerFn({ method: "POST" })
       const name = data.name.trim();
       if (!name) throw new Error(await msg("schoolNameRequired"));
       const domain = data.googleDomain.trim().toLowerCase();
-      if (!domain || !domain.includes(".")) throw new Error(await msg("domainInvalid"));
+      if (!domain || !domain.includes("."))
+        throw new Error(await msg("domainInvalid"));
       const email = data.coordinadorEmail.trim().toLowerCase();
-      if (!email.includes("@")) throw new Error(await msg("coordinadorEmailRequired"));
+      if (!email.includes("@"))
+        throw new Error(await msg("coordinadorEmailRequired"));
       try {
         return await createSchool(sql, {
           name,
@@ -62,7 +83,8 @@ export const createSchoolFn = createServerFn({ method: "POST" })
           createdBy: context.userId,
         });
       } catch (err) {
-        if (err instanceof Error && err.message === "DOMAIN_TAKEN") throw new Error(await msg("domainTaken"));
+        if (err instanceof Error && err.message === "DOMAIN_TAKEN")
+          throw new Error(await msg("domainTaken"));
         throw err;
       }
     } catch (err) {
@@ -109,9 +131,11 @@ export const updateSchoolAdminFn = createServerFn({ method: "POST" })
       const name = data.name.trim();
       if (!name) throw new Error(await msg("schoolNameRequired"));
       const domain = data.googleDomain.trim().toLowerCase();
-      if (domain && !domain.includes(".")) throw new Error(await msg("domainInvalid"));
+      if (domain && !domain.includes("."))
+        throw new Error(await msg("domainInvalid"));
       const email = data.coordinadorEmail.trim().toLowerCase();
-      if (email && !email.includes("@")) throw new Error(await msg("emailInvalid"));
+      if (email && !email.includes("@"))
+        throw new Error(await msg("emailInvalid"));
       try {
         await updateSchool(sql, data.id, {
           name,
@@ -120,7 +144,8 @@ export const updateSchoolAdminFn = createServerFn({ method: "POST" })
           coordinadorEmail: email || null,
         });
       } catch (err) {
-        if (err instanceof Error && err.message === "DOMAIN_TAKEN") throw new Error(await msg("domainTaken"));
+        if (err instanceof Error && err.message === "DOMAIN_TAKEN")
+          throw new Error(await msg("domainTaken"));
         throw err;
       }
       return { ok: true };
@@ -164,9 +189,14 @@ export interface SchoolPeople {
   classMembers: Record<number, number>;
 }
 
-async function loadSchoolPeople(sql: import("./podcasts.server").Sql, schoolId: number): Promise<SchoolPeople> {
-  const { getSchoolById, listSchoolMembers, listSchoolInvites } = await import("./schools.server");
-  const { ensureClassesSchema, listClassesBySchool, countMembersByClass } = await import("./classes.server");
+async function loadSchoolPeople(
+  sql: import("./podcasts.server").Sql,
+  schoolId: number,
+): Promise<SchoolPeople> {
+  const { getSchoolById, listSchoolMembers, listSchoolInvites } =
+    await import("./schools.server");
+  const { ensureClassesSchema, listClassesBySchool, countMembersByClass } =
+    await import("./classes.server");
   const school = await getSchoolById(sql, schoolId);
   if (!school) throw new Error(await msg("schoolGone"));
   await ensureClassesSchema(sql);
@@ -244,7 +274,8 @@ async function resolveManagedSchool(
   context: { userId: string; claims: Record<string, unknown> },
   requestedSchoolId: number | undefined,
 ): Promise<{ schoolId: number; userId: string }> {
-  const { ensureSettingsSchema, getOrCreateProfile, isSuperAdminEmail } = await import("./settings.server");
+  const { ensureSettingsSchema, getOrCreateProfile, isSuperAdminEmail } =
+    await import("./settings.server");
   const { ensureSchoolsSchema } = await import("./schools.server");
   const { ensureClassesSchema } = await import("./classes.server");
   const email = (context.claims["email"] as string | undefined) ?? "";
@@ -255,7 +286,8 @@ async function resolveManagedSchool(
   if (isSuperAdminEmail(email) && requestedSchoolId !== undefined) {
     return { schoolId: requestedSchoolId, userId: context.userId };
   }
-  if (profile.role !== "coordinador") throw new Error(await msg("coordinadorOnly"));
+  if (profile.role !== "coordinador")
+    throw new Error(await msg("coordinadorOnly"));
   if (profile.school_id === null) throw new Error(await msg("noSchool"));
   return { schoolId: profile.school_id, userId: context.userId };
 }
@@ -266,16 +298,28 @@ export const assignRoleFn = createServerFn({ method: "POST" })
   .inputValidator((input: AssignRoleInput) => input)
   .handler(async ({ context, data }) => {
     const { getSql } = await import("./podcasts.server");
-    const { assignRoleByEmail, isMemberRole } = await import("./schools.server");
+    const { assignRoleByEmail, isMemberRole } =
+      await import("./schools.server");
     const sql = getSql();
     try {
-      const { schoolId, userId } = await resolveManagedSchool(sql, context, data.schoolId);
+      const { schoolId, userId } = await resolveManagedSchool(
+        sql,
+        context,
+        data.schoolId,
+      );
       const email = data.email.trim().toLowerCase();
       if (!email.includes("@")) throw new Error(await msg("emailInvalid"));
       if (!isMemberRole(data.role)) throw new Error(await msg("roleInvalid"));
-      const own = ((context.claims["email"] as string | undefined) ?? "").toLowerCase();
+      const own = (
+        (context.claims["email"] as string | undefined) ?? ""
+      ).toLowerCase();
       if (email === own) throw new Error(await msg("cannotChangeSelf"));
-      const outcome = await assignRoleByEmail(sql, { schoolId, email, role: data.role, createdBy: userId });
+      const outcome = await assignRoleByEmail(sql, {
+        schoolId,
+        email,
+        role: data.role,
+        createdBy: userId,
+      });
       return { outcome };
     } catch (err) {
       throw new Error(describePgError(err));
@@ -293,10 +337,20 @@ export const setMemberRoleFn = createServerFn({ method: "POST" })
     const { updateMemberRole, isMemberRole } = await import("./schools.server");
     const sql = getSql();
     try {
-      const { schoolId } = await resolveManagedSchool(sql, context, data.schoolId);
+      const { schoolId } = await resolveManagedSchool(
+        sql,
+        context,
+        data.schoolId,
+      );
       if (!isMemberRole(data.role)) throw new Error(await msg("roleInvalid"));
-      if (data.authUserId === context.userId) throw new Error(await msg("cannotChangeSelf"));
-      const ok = await updateMemberRole(sql, schoolId, data.authUserId, data.role);
+      if (data.authUserId === context.userId)
+        throw new Error(await msg("cannotChangeSelf"));
+      const ok = await updateMemberRole(
+        sql,
+        schoolId,
+        data.authUserId,
+        data.role,
+      );
       if (!ok) throw new Error(await msg("memberNotFound"));
       return { ok: true };
     } catch (err) {
@@ -315,8 +369,13 @@ export const removeMemberFn = createServerFn({ method: "POST" })
     const { removeMember } = await import("./schools.server");
     const sql = getSql();
     try {
-      const { schoolId } = await resolveManagedSchool(sql, context, data.schoolId);
-      if (data.authUserId === context.userId) throw new Error(await msg("cannotChangeSelf"));
+      const { schoolId } = await resolveManagedSchool(
+        sql,
+        context,
+        data.schoolId,
+      );
+      if (data.authUserId === context.userId)
+        throw new Error(await msg("cannotChangeSelf"));
       const ok = await removeMember(sql, schoolId, data.authUserId);
       if (!ok) throw new Error(await msg("memberNotFound"));
       return { ok: true };
@@ -335,7 +394,11 @@ export const deleteInviteFn = createServerFn({ method: "POST" })
     const { deleteInvite } = await import("./schools.server");
     const sql = getSql();
     try {
-      const { schoolId } = await resolveManagedSchool(sql, context, data.schoolId);
+      const { schoolId } = await resolveManagedSchool(
+        sql,
+        context,
+        data.schoolId,
+      );
       const ok = await deleteInvite(sql, schoolId, data.inviteId);
       if (!ok) throw new Error(await msg("inviteNotFound"));
       return { ok: true };
@@ -355,8 +418,14 @@ export const importMembersFn = createServerFn({ method: "POST" })
     const { importMembers } = await import("./schools.server");
     const sql = getSql();
     try {
-      const { schoolId, userId } = await resolveManagedSchool(sql, context, data.schoolId);
-      const own = ((context.claims["email"] as string | undefined) ?? "").toLowerCase();
+      const { schoolId, userId } = await resolveManagedSchool(
+        sql,
+        context,
+        data.schoolId,
+      );
+      const own = (
+        (context.claims["email"] as string | undefined) ?? ""
+      ).toLowerCase();
       const rows = data.rows
         .map((r) => ({
           name: String(r.name ?? "").trim(),
@@ -367,7 +436,8 @@ export const importMembersFn = createServerFn({ method: "POST" })
         }))
         .filter((r) => r.email && r.email.toLowerCase() !== own);
       if (rows.length === 0) throw new Error(await msg("importEmpty"));
-      if (rows.length > IMPORT_MAX_ROWS) throw new Error(await msg("importTooMany", { max: IMPORT_MAX_ROWS }));
+      if (rows.length > IMPORT_MAX_ROWS)
+        throw new Error(await msg("importTooMany", { max: IMPORT_MAX_ROWS }));
       return await importMembers(sql, schoolId, rows, userId);
     } catch (err) {
       throw new Error(describePgError(err));
@@ -380,7 +450,10 @@ export const importMembersFn = createServerFn({ method: "POST" })
 /* Panell del coordinador                                                    */
 /* ------------------------------------------------------------------------ */
 
-async function requireCoordinadorSchoolId(context: { userId: string; claims: Record<string, unknown> }) {
+async function requireCoordinadorSchoolId(context: {
+  userId: string;
+  claims: Record<string, unknown>;
+}) {
   const { getSql } = await import("./podcasts.server");
   const sql = getSql();
   try {
@@ -421,7 +494,10 @@ export const updateMySchoolFn = createServerFn({ method: "POST" })
     try {
       const radioName = data.radioName.trim();
       if (!radioName) throw new Error(await msg("radioNameRequired"));
-      await updateSchoolSettings(sql, schoolId, { radioName, allowExternalSharing: data.allowExternalSharing });
+      await updateSchoolSettings(sql, schoolId, {
+        radioName,
+        allowExternalSharing: data.allowExternalSharing,
+      });
       return { ok: true };
     } catch (err) {
       throw new Error(describePgError(err));
@@ -455,3 +531,38 @@ export const setDocentFn = createServerFn({ method: "POST" })
       await sql.end();
     }
   });
+
+/**
+ * Dades mínimes de l'escola de qui ha iniciat sessió (nom i slug del mur),
+ * perquè el panell del mestre pugui enllaçar al mur de l'escola. Qualsevol
+ * docent amb escola; no retorna res de privat.
+ */
+export const fetchMySchoolBasicsFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    async ({
+      context,
+    }): Promise<{ slug: string; radioName: string } | null> => {
+      const { getSql } = await import("./podcasts.server");
+      const { ensureSettingsSchema, getOrCreateProfile } =
+        await import("./settings.server");
+      const { ensureSchoolsSchema, getSchoolById } =
+        await import("./schools.server");
+      const sql = getSql();
+      try {
+        const email = (context.claims["email"] as string | undefined) ?? "";
+        await ensureSettingsSchema(sql);
+        await ensureSchoolsSchema(sql);
+        const profile = await getOrCreateProfile(sql, context.userId, email);
+        if (profile.school_id === null) return null;
+        const school = await getSchoolById(sql, profile.school_id);
+        return school
+          ? { slug: school.slug, radioName: school.radio_name }
+          : null;
+      } catch (err) {
+        throw new Error(describePgError(err));
+      } finally {
+        await sql.end();
+      }
+    },
+  );

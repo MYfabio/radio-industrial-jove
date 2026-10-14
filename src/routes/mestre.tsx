@@ -4,7 +4,7 @@ import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   GraduationCap,
   Loader2,
@@ -17,10 +17,13 @@ import {
   Radio,
   Link2,
   Trash2,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +51,7 @@ import { SITE_NAME } from "@/lib/siteConfig";
 import { notifyPodcastsChanged } from "@/lib/podcastSync";
 import { useAuth } from "@/lib/auth";
 import { AcceptTermsGate } from "@/components/AcceptTermsGate";
+import { fetchMySchoolBasicsFn } from "@/lib/schools.functions";
 import { ClassDashboard } from "@/components/ClassDashboard";
 import {
   langFromMatches,
@@ -305,7 +309,7 @@ function Row({ p, onSaved }: { p: PodcastRow; onSaved: () => void }) {
   );
 }
 
-function ClassesPanel() {
+function ClassesPanel({ schoolSlug }: { schoolSlug: string | null }) {
   const t = useT(m);
   const { user, schoolId, loading: authLoading } = useAuth();
   const create = useServerFn(createClassFn);
@@ -488,37 +492,54 @@ function ClassesPanel() {
               key={c.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2"
             >
-              <span className="min-w-0 truncate text-sm font-semibold">
-                {c.name}
+              <div className="w-full min-w-0">
+                <p className="truncate text-sm font-semibold">{c.name}</p>
                 {c.school_id !== null && (
-                  <button
-                    onClick={() => void toggleSharing(c)}
-                    disabled={sharingId === c.id}
-                    aria-pressed={c.share_to_school}
+                  <label
+                    className="mt-1.5 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"
                     title={t("shareHint")}
-                    className={`ml-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 ${
-                      c.share_to_school
-                        ? "border-accent/40 bg-accent/15 text-accent"
-                        : "border-border bg-card text-muted-foreground hover:bg-accent/10"
-                    }`}
                   >
-                    {sharingId === c.id ? (
-                      <Loader2 className="size-2.5 animate-spin" />
-                    ) : (
-                      <Radio className="size-2.5" />
+                    <Switch
+                      checked={c.share_to_school}
+                      disabled={sharingId === c.id}
+                      onCheckedChange={() => void toggleSharing(c)}
+                      aria-label={t("shareSwitchLabel")}
+                    />
+                    <span>
+                      {t("shareSwitchLabel")}:{" "}
+                      <span
+                        className={
+                          c.share_to_school
+                            ? "font-semibold text-accent"
+                            : "font-semibold"
+                        }
+                      >
+                        {c.share_to_school ? t("yes") : t("no")}
+                      </span>
+                    </span>
+                    {sharingId === c.id && (
+                      <Loader2 className="size-3 animate-spin" />
                     )}
-                    {c.share_to_school ? t("shareOn") : t("shareOff")}
-                  </button>
+                  </label>
                 )}
-              </span>
-              <span className="flex shrink-0 items-center gap-1.5">
+              </div>
+              <span className="flex flex-wrap items-center gap-1.5">
                 <Link
                   to="/classe/$code"
                   params={{ code: c.invite_code }}
-                  className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold hover:bg-accent/10"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold hover:bg-accent/10"
                 >
-                  {t("wall")}
+                  <Users className="size-3.5" /> {t("classWall")}
                 </Link>
+                {c.share_to_school && schoolSlug && (
+                  <Link
+                    to="/escola/$slug"
+                    params={{ slug: schoolSlug }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/20"
+                  >
+                    <Radio className="size-3.5" /> {t("schoolWall")}
+                  </Link>
+                )}
                 <button
                   onClick={() =>
                     void copy(c.id, "link", joinLink(c.invite_code))
@@ -634,15 +655,35 @@ function ClassesPanel() {
 }
 
 /** Quadre de la classe: fa servir la mateixa consulta de classes que ClassesPanel (react-query la comparteix). */
-function DashboardMount() {
+function DashboardMount({ onGoClasses }: { onGoClasses: () => void }) {
+  const t = useT(m);
   const { user } = useAuth();
   const list = useServerFn(fetchMyClasses);
-  const { data: classes } = useQuery({
+  const { data: classes, isLoading } = useQuery({
     queryKey: ["classes", "meves"],
     queryFn: () => list({}),
     enabled: !!user,
   });
-  if (!classes || classes.length === 0) return null;
+  if (isLoading) {
+    return (
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" /> {t("loading")}
+      </p>
+    );
+  }
+  if (!classes || classes.length === 0) {
+    return (
+      <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+        {t("dashboardNoClasses")}{" "}
+        <button
+          onClick={onGoClasses}
+          className="font-semibold text-accent hover:underline"
+        >
+          {t("tabClasses")}
+        </button>
+      </p>
+    );
+  }
   return <ClassDashboard classes={classes} />;
 }
 
@@ -653,6 +694,31 @@ function TeacherPanel() {
   const list = useServerFn(fetchAllPodcasts);
   const [classFilter, setClassFilter] = useState<string>("totes");
   const [shownReviewed, setShownReviewed] = useState(10);
+  const fetchSchool = useServerFn(fetchMySchoolBasicsFn);
+  const { data: school } = useQuery({
+    queryKey: ["my-school-basics"],
+    queryFn: () => fetchSchool({}),
+    enabled: !!user && role !== "alumne",
+  });
+  const [tab, setTab] = useState<string>("revisar");
+  useEffect(() => {
+    // Recorda la darrera pestanya (després d'hidratar, perquè l'SSR coincideixi).
+    try {
+      const saved = window.localStorage.getItem("radio-mestre-tab");
+      if (saved === "revisar" || saved === "classes" || saved === "quadre")
+        setTab(saved);
+    } catch {
+      // Sense localStorage comencem a "Revisar".
+    }
+  }, []);
+  const changeTab = (next: string) => {
+    setTab(next);
+    try {
+      window.localStorage.setItem("radio-mestre-tab", next);
+    } catch {
+      // Sense localStorage, la pestanya no es recorda: no passa res.
+    }
+  };
   const { data, isLoading } = useQuery({
     queryKey: ["podcasts", "tots"],
     queryFn: () => list({}),
@@ -679,6 +745,7 @@ function TeacherPanel() {
   const pending = (data ?? []).filter(
     (p) => p.status === "pendent" && matchesFilter(p),
   );
+  const pendingAll = (data ?? []).filter((p) => p.status === "pendent").length;
   const rest = (data ?? []).filter(
     (p) => p.status !== "pendent" && matchesFilter(p),
   );
@@ -736,96 +803,143 @@ function TeacherPanel() {
               <ThemeToggle />
               <AuthButton />
             </span>
-            <Link
-              to="/estudi"
-              className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
-            >
-              {t("goStudio")}
-            </Link>
-            <Link
-              to="/mur"
-              className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
-            >
-              {t("seeWall")}
-            </Link>
+            <div className="flex w-full flex-wrap items-center gap-2">
+              <Link
+                to="/estudi"
+                className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
+              >
+                {t("goStudio")}
+              </Link>
+              {school && (
+                <Link
+                  to="/escola/$slug"
+                  params={{ slug: school.slug }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
+                >
+                  <Radio className="size-4" /> {t("schoolWall")}
+                </Link>
+              )}
+              <Link
+                to="/mur"
+                title={t("openWallHint")}
+                className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"
+              >
+                {t("openWall")}
+              </Link>
+            </div>
           </header>
 
-          <ClassesPanel />
+          <Tabs value={tab} onValueChange={changeTab}>
+            <TabsList className="mb-6 h-auto w-full flex-wrap justify-start gap-1 rounded-2xl p-1">
+              <TabsTrigger
+                value="revisar"
+                className="gap-1.5 rounded-xl px-4 py-2"
+              >
+                <Check className="size-4" /> {t("tabReview")}
+                {pendingAll > 0 && (
+                  <span className="rounded-full bg-amber-500/20 px-1.5 text-xs font-bold text-amber-500">
+                    {pendingAll}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="classes"
+                className="gap-1.5 rounded-xl px-4 py-2"
+              >
+                <Users className="size-4" /> {t("tabClasses")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="quadre"
+                className="gap-1.5 rounded-xl px-4 py-2"
+              >
+                <LayoutDashboard className="size-4" /> {t("tabDashboard")}
+              </TabsTrigger>
+            </TabsList>
 
-          <DashboardMount />
+            <TabsContent value="classes">
+              <ClassesPanel schoolSlug={school?.slug ?? null} />
+            </TabsContent>
 
-          {isLoading && (
-            <p className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> {t("loadingPodcasts")}
-            </p>
-          )}
+            <TabsContent value="quadre">
+              <DashboardMount onGoClasses={() => changeTab("classes")} />
+            </TabsContent>
 
-          {(classNames.length > 0 || hasClassless) && (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("classFilter")}
-              </span>
-              {[
-                "totes",
-                ...classNames,
-                ...(hasClassless ? ["sense-classe"] : []),
-              ].map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setClassFilter(c)}
-                  aria-pressed={classFilter === c}
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                    classFilter === c
-                      ? "border-accent bg-accent/20 text-accent"
-                      : "border-border bg-card text-muted-foreground hover:bg-secondary"
-                  }`}
-                >
-                  {c === "totes"
-                    ? t("allClasses")
-                    : c === "sense-classe"
-                      ? t("noClassFilter")
-                      : c}
-                </button>
-              ))}
-            </div>
-          )}
+            <TabsContent value="revisar">
+              {isLoading && (
+                <p className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />{" "}
+                  {t("loadingPodcasts")}
+                </p>
+              )}
 
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("pendingTitle", { count: pending.length })}
-          </h2>
-          <div className="space-y-4">
-            {pending.map((p) => (
-              <Row key={p.id} p={p} onSaved={refresh} />
-            ))}
-            {!isLoading && pending.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-muted-foreground">
-                {t("nothingPending")}
-              </p>
-            )}
-          </div>
-
-          {rest.length > 0 && (
-            <>
-              <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("reviewedTitle", { count: rest.length })}
-              </h2>
-              <div className="space-y-4">
-                {rest.slice(0, shownReviewed).map((p) => (
-                  <Row key={p.id} p={p} onSaved={refresh} />
-                ))}
-              </div>
-              {rest.length > shownReviewed && (
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setShownReviewed((n) => n + 20)}
-                  >
-                    {t("showMore", { count: rest.length - shownReviewed })}
-                  </Button>
+              {(classNames.length > 0 || hasClassless) && (
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("classFilter")}
+                  </span>
+                  {[
+                    "totes",
+                    ...classNames,
+                    ...(hasClassless ? ["sense-classe"] : []),
+                  ].map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setClassFilter(c)}
+                      aria-pressed={classFilter === c}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                        classFilter === c
+                          ? "border-accent bg-accent/20 text-accent"
+                          : "border-border bg-card text-muted-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {c === "totes"
+                        ? t("allClasses")
+                        : c === "sense-classe"
+                          ? t("noClassFilter")
+                          : c}
+                    </button>
+                  ))}
                 </div>
               )}
-            </>
-          )}
+
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("pendingTitle", { count: pending.length })}
+              </h2>
+              <div className="space-y-4">
+                {pending.map((p) => (
+                  <Row key={p.id} p={p} onSaved={refresh} />
+                ))}
+                {!isLoading && pending.length === 0 && (
+                  <p className="rounded-2xl border border-dashed border-border p-6 text-center text-muted-foreground">
+                    {t("nothingPending")}
+                  </p>
+                )}
+              </div>
+
+              {rest.length > 0 && (
+                <>
+                  <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("reviewedTitle", { count: rest.length })}
+                  </h2>
+                  <div className="space-y-4">
+                    {rest.slice(0, shownReviewed).map((p) => (
+                      <Row key={p.id} p={p} onSaved={refresh} />
+                    ))}
+                  </div>
+                  {rest.length > shownReviewed && (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setShownReviewed((n) => n + 20)}
+                      >
+                        {t("showMore", { count: rest.length - shownReviewed })}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </AcceptTermsGate>
