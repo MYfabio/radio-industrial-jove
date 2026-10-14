@@ -5,9 +5,10 @@ dist/
 *.log
 .DS_Store
 
-# Aquest projecte fa servir Bun (bunfig.toml). Ignora lockfiles d'altres
-# gestors de paquets perquè no entrin en conflicte amb bun.lockb.
-package-lock.json
+# Railway instal·la amb npm: package-lock.json S'HA DE pujar perquè el
+# desplegament faci servir exactament les versions provades. Sense ell, el
+# 14/10/2026 es va instal·lar una versió nova de TanStack Start que va treure
+# createServerFn().inputValidator i tota la web va caure.
 yarn.lock
 
 .env
