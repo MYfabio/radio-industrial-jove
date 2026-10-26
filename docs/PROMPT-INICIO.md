@@ -31,7 +31,8 @@ src/routes/     index, estudi (estudio de grabación), espai, mur, classe.$code,
 src/lib/        pares *.server.ts (servidor) y *.functions.ts (cliente) por
                 dominio: podcasts, classes, schools, sounds, favorites,
                 settings, accessRequests
-                audio: mp3, autoEdit, bgMusic, soundEffects, customSounds,
+                audio: studioAudio (motor: buses y salidas), studioAudioSettings
+                (persistencia), mp3, autoEdit, bgMusic, soundEffects, customSounds,
                 podcastTemplates, publishPodcast, podcastSync
                 siteConfig.ts  ← nombre, eslogan (en ca/es/en), URL y correo del centro
                 i18n/          ← index.tsx (defineMessages/useT/tr, LangProvider), server.ts
@@ -42,11 +43,47 @@ src/lib/        pares *.server.ts (servidor) y *.functions.ts (cliente) por
 src/components/ Waveform, LevelMeter, PublishPodcast, PodcastWall,
                 JoinClassDialog (mis clases + código), AcceptTermsGate, CookieNotice,
                 LangToggle (selector ca/es/en), SchoolMembers (roles con desplegable,
-                quitar, invitar por correo, importar Excel, clases)…
+                quitar, invitar por correo, importar Excel, clases),
+                StudioMixer (hook useStudioAudio + mesa: micros, salidas, retorno)…
 src/integrations/supabase/  cliente, middleware y attacher de auth
 supabase/migrations/        esquema
 public/         efectos de sonido (mp3), favicon, robots.txt
 ```
+
+**Despliegue:** Railway (servicio `radio-industrial-jove`) despliega solo cada
+push a `main`, con `npm install`. **`package-lock.json` tiene que estar en el
+repo**: sin él, el 14/10/2026 entró una versión nueva de TanStack Start que
+quitó `createServerFn().inputValidator` y toda la web cayó. Los registros se ven
+con `railway logs --service radio-industrial-jove`.
+
+**Arquitectura de audio del estudio** (`src/lib/studioAudio.ts`, un solo
+`AudioContext` con `latencyHint: "interactive"`):
+```
+MICRO n ─► selección de entrada ─► MONO ─► VOLUMEN ─► PANORAMA ─┬─► BUS DE EMISIÓN ─► analizador (onda)
+           (mezcla 1+2 | solo 1 | solo 2)                       │    (programa)     └► MediaStreamDestination ─► MediaRecorder
+                                                                └─► retorno micros ─┐
+EFECTOS / FONDO ─► fxIn ─┬─► BUS DE EMISIÓN                                         ├─► BUS DE AURICULARES (máster)
+                         └─► retorno fondo ─────────────────────────────────────────┘          │
+   salida 1: AudioContext.setSinkId (+ par de canales en interfaces >2 canales) ◄───────────────┤
+   salidas 2..n: MediaStreamDestination + <audio>.setSinkId ◄───────────────────────────────────┘
+```
+- Cada fuente entra **una sola vez** en cada bus: la voz no se duplica en la
+  grabación y el bus de auriculares nunca vuelve al de emisión (no hay bucles).
+- Controles del retorno (máster, micros, fondo) = solo auriculares. Volumen y
+  panorama de cada micro = de la tira (afectan a los dos buses, retorno post-fader).
+- Micros con `echoCancellation/noiseSuppression/autoGainControl` desactivados por
+  defecto (casilla para activarlos). Hasta 4 micros en el modo «Diversos micròfons».
+- Con un solo micro, oír la propia voz está desactivado por defecto (portátiles
+  con altavoces = acople); en modo múltiple, activado, con aviso de auriculares cerrados.
+- Navegadores: Chrome/Edge → `AudioContext.setSinkId` + `<audio>.setSinkId`
+  (varias salidas y par de canales). Firefox 116+ → solo `<audio>.setSinkId`
+  (varias salidas, algo más de latencia, sin elegir par de canales). Safari → sin
+  elección de salida: suena por la del sistema y se muestra un aviso.
+- Configuración guardada en `localStorage` (`radio-estudi-audio-v1`): micros
+  (dispositivo, entrada, volumen, panorama), salidas, par, niveles y procesado. Al
+  volver se restaura si el dispositivo sigue conectado (por id o por nombre).
+- `devicechange`: las salidas se reaplican y los micros desconectados se reabren
+  solos cuando vuelven; la grabación no se para.
 
 **Comandos:**
 ```

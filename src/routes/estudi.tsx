@@ -28,6 +28,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
+import { StudioMixer, useStudioAudio } from "@/components/StudioMixer";
 
 import { Button } from "@/components/ui/button";
 import { EFFECTS, playEffect, type EffectId } from "@/lib/soundEffects";
@@ -131,9 +132,8 @@ function RadioStudio() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [justFinished, setJustFinished] = useState(false);
   const [duo, setDuo] = useState(false);
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [micA, setMicA] = useState("");
-  const [micB, setMicB] = useState("");
+  // Motor d'àudio: busos d'emissió i d'auriculars, micros, sortides (src/lib/studioAudio.ts).
+  const audio = useStudioAudio({ multi: duo });
   const [mp3Busy, setMp3Busy] = useState(false);
   const [mp3Url, setMp3Url] = useState<string | null>(null);
 
@@ -232,9 +232,6 @@ function RadioStudio() {
   const chunksRef = useRef<Blob[]>([]);
   const blobRef = useRef<Blob | null>(null);
   const streamRef = useRef<MediaStream[]>([]);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const mixRef = useRef<GainNode | null>(null);
-  const monitorRef = useRef<GainNode | null>(null);
   const bgRef = useRef<BgHandle | null>(null);
   const bgTrackRef = useRef<string | null>(null);
 
@@ -244,41 +241,27 @@ function RadioStudio() {
     return () => window.clearInterval(id);
   }, [status]);
 
+  const { dispose: disposeAudio } = audio;
   const cleanup = useCallback(() => {
     bgRef.current?.stop();
     bgRef.current = null;
-    streamRef.current.forEach((s) => s.getTracks().forEach((t) => t.stop()));
     streamRef.current = [];
-    mixRef.current = null;
-    monitorRef.current = null;
-    audioCtxRef.current?.close();
-    audioCtxRef.current = null;
+    disposeAudio();
     setAnalyser(null);
-  }, []);
+  }, [disposeAudio]);
 
   useEffect(() => () => cleanup(), [cleanup]);
 
-  /** Context d'àudio compartit: els efectes sonen per l'altaveu i entren a la gravació. */
-  const ensureCtx = () => {
-    if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-      const ctx = new AudioContext();
-      audioCtxRef.current = ctx;
-      const monitor = ctx.createGain();
-      monitor.gain.value = 1;
-      monitor.connect(ctx.destination);
-      monitorRef.current = monitor;
-    }
-    void audioCtxRef.current.resume();
-    return audioCtxRef.current;
-  };
+  /**
+   * Context d'àudio compartit. Els efectes i la música entren per una sola
+   * porta (fxIn) que alimenta tant el bus d'emissió (gravació) com el retorn
+   * d'auriculars: mai es connecten dues vegades al mateix bus.
+   */
+  const ensureCtx = () => audio.ensureEngine().ctx;
 
   const triggerEffect = (id: EffectId) => {
     const ctx = ensureCtx();
-    const destinations: AudioNode[] = [];
-    if (monitorRef.current) destinations.push(monitorRef.current);
-    if (mixRef.current) destinations.push(mixRef.current);
-    if (destinations.length === 0) destinations.push(ctx.destination);
-    playEffect(ctx, id, destinations, {
+    playEffect(ctx, id, destinationsNow(ctx), {
       volume: fxVolume,
       fadeIn: fxFade,
       fadeOut: fxFade,
@@ -300,13 +283,9 @@ function RadioStudio() {
     refreshSounds();
   }, [refreshSounds]);
 
-  const destinationsNow = (ctx: AudioContext) => {
-    const destinations: AudioNode[] = [];
-    if (monitorRef.current) destinations.push(monitorRef.current);
-    if (mixRef.current) destinations.push(mixRef.current);
-    if (destinations.length === 0) destinations.push(ctx.destination);
-    return destinations;
-  };
+  const destinationsNow = (_ctx: AudioContext): AudioNode[] => [
+    audio.ensureEngine().fxIn,
+  ];
 
   const triggerCustom = async (sound: SoundRow) => {
     const ctx = ensureCtx();
@@ -414,22 +393,6 @@ function RadioStudio() {
     }
   };
 
-  /** Llista de micròfons disponibles (per al mode a dos). */
-  const refreshDevices = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => {
-        s.getTracks().forEach((t) => t.stop());
-      });
-      const all = await navigator.mediaDevices.enumerateDevices();
-      const mics = all.filter((d) => d.kind === "audioinput");
-      setDevices(mics);
-      if (!micA && mics[0]) setMicA(mics[0].deviceId);
-      if (!micB && mics[1]) setMicB(mics[1].deviceId);
-    } catch {
-      setError(t("micsFailed"));
-    }
-  };
-
   /** "calma"/"noticies" es sintetitzen; "so:123" és música pujada per la classe. */
   const startBackgroundTrack = async (
     id: string,
@@ -476,61 +439,15 @@ function RadioStudio() {
   const start = async () => {
     setError(null);
     try {
-      // Desactivem el processament pensat per a videotrucades: amb els efectes
-      // sonant pels altaveus, la cancel·lació d'eco i el control automàtic de
-      // guany poden confondre la veu amb "eco" i baixar-ne el volum de cop.
-      const rawAudio = {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
-      };
-      const wanted: MediaTrackConstraints[] = duo
-        ? [
-            micA ? { ...rawAudio, deviceId: { exact: micA } } : rawAudio,
-            micB ? { ...rawAudio, deviceId: { exact: micB } } : rawAudio,
-          ]
-        : [rawAudio];
-
-      const streams: MediaStream[] = [];
-      for (const audio of wanted) {
-        streams.push(await navigator.mediaDevices.getUserMedia({ audio }));
-      }
-      streamRef.current = streams;
-
-      const ctx = ensureCtx();
-
-      // Mescla: micros + efectes + música -> gravació i mesurador d'ona
-      const mix = ctx.createGain();
-      mixRef.current = mix;
-
-      streams.forEach((stream) => {
-        const micSource = ctx.createMediaStreamSource(stream);
-        const micGain = ctx.createGain();
-        micGain.gain.value = streams.length > 1 ? 0.9 : 1;
-        micSource.connect(micGain).connect(mix);
-      });
-
-      const node = ctx.createAnalyser();
-      node.fftSize = 1024;
-      mix.connect(node);
-      setAnalyser(node);
-
-      const dest = ctx.createMediaStreamDestination();
-      mix.connect(dest);
-
-      // Si hi ha música de fons activa, la reencaminem cap a la gravació.
-      if (bgTrack) {
-        bgRef.current?.stop();
-        bgRef.current = null;
-        const track = bgTrack;
-        void startBackgroundTrack(track, ctx, [
-          monitorRef.current ?? ctx.destination,
-          mix,
-        ]).then((handle) => {
-          if (bgTrackRef.current === track) bgRef.current = handle;
-          else handle.stop();
-        });
-      }
+      // Micros: el motor els obre amb el processament de videotrucada
+      // desactivat per defecte (configurable), els passa a mono i els envia
+      // al bus d'emissió i, per separat, al retorn d'auriculars. Si ja estaven
+      // oberts per la prova de micros, es reutilitzen.
+      const engine = audio.ensureEngine();
+      await audio.openMics();
+      setAnalyser(engine.analyser);
+      // La música de fons ja entra al bus d'emissió per fxIn: no cal reiniciar-la.
+      const dest = engine.recordDest;
 
       const recorder = new MediaRecorder(dest.stream);
       chunksRef.current = [];
@@ -1059,45 +976,14 @@ function RadioStudio() {
                   <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     <Users className="size-4" /> {t("collabMode")}
                   </p>
-                  <label className="mt-2 flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={duo}
-                      onChange={(e) => {
-                        setDuo(e.target.checked);
-                        if (e.target.checked) void refreshDevices();
-                      }}
-                      className="size-4"
+                  <div className="mt-2">
+                    <StudioMixer
+                      audio={audio}
+                      multi={duo}
+                      onMultiChange={setDuo}
+                      recording={status === "recording" || status === "paused"}
                     />
-                    {t("twoMics")}
-                  </label>
-                  {duo && (
-                    <div className="mt-2 space-y-2">
-                      {[
-                        { label: t("micA"), value: micA, set: setMicA },
-                        { label: t("micB"), value: micB, set: setMicB },
-                      ].map((mic) => (
-                        <label
-                          key={mic.label}
-                          className="block text-xs text-muted-foreground"
-                        >
-                          {mic.label}
-                          <select
-                            value={mic.value}
-                            onChange={(e) => mic.set(e.target.value)}
-                            className="mt-1 w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground"
-                          >
-                            <option value="">{t("micDefault")}</option>
-                            {devices.map((d, i) => (
-                              <option key={d.deviceId} value={d.deviceId}>
-                                {d.label || t("micN", { n: i + 1 })}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
             </section>
