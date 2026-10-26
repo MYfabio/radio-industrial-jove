@@ -19,6 +19,16 @@ export interface StudioAudioSettings {
    * gent grava amb els altaveus del portàtil i faria acoblament.
    */
   singleMonitor: boolean;
+  /**
+   * Mode de diversos micros: si cada persona rep també la seva pròpia veu.
+   * Desactivat per defecte: el navegador la retorna amb retard i sona a eco.
+   */
+  selfMonitor: boolean;
+  /**
+   * Aparellament manual casc → micro (clau = deviceId de la sortida, "" = per
+   * defecte; valor = id de la tira o "none"). Si no hi és, és automàtic.
+   */
+  pairs: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: StudioAudioSettings = {
@@ -29,6 +39,8 @@ export const DEFAULT_SETTINGS: StudioAudioSettings = {
   monitor: { micsEnabled: true, master: 1, mics: 1, fx: 1 },
   processing: false,
   singleMonitor: false,
+  selfMonitor: false,
+  pairs: {},
 };
 
 // Retorn a volum complet per defecte: efectes i fons sonen igual que abans del canvi.
@@ -97,6 +109,15 @@ export function loadSettings(): StudioAudioSettings | null {
       },
       processing: data.processing === true,
       singleMonitor: data.singleMonitor === true,
+      selfMonitor: data.selfMonitor === true,
+      pairs:
+        data.pairs && typeof data.pairs === "object"
+          ? Object.fromEntries(
+              Object.entries(data.pairs as Record<string, unknown>).filter(
+                (e): e is [string, string] => typeof e[1] === "string",
+              ),
+            )
+          : {},
     };
   } catch {
     return null;

@@ -67,6 +67,11 @@ EFECTOS / FONDO ─► fxIn ─┬─► BUS DE EMISIÓN                        
    salida 1: AudioContext.setSinkId (+ par de canales en interfaces >2 canales) ◄───────────────┤
    salidas 2..n: MediaStreamDestination + <audio>.setSinkId ◄───────────────────────────────────┘
 ```
+- **Mezcla menos uno:** cada salida de auriculares tiene su propio bus de retorno.
+  Si un casco está emparejado con un micro (automático por `groupId` del mismo
+  dispositivo USB, o a mano), ese casco no recibe su propio micro: así no se oye
+  la copia retrasada de la propia voz (eco). Casilla «Sentir-me a mi mateix» para
+  volver a recibirla. Con un solo micro no se aplica (manda «Sentir la veu»).
 - Cada fuente entra **una sola vez** en cada bus: la voz no se duplica en la
   grabación y el bus de auriculares nunca vuelve al de emisión (no hay bucles).
 - Controles del retorno (máster, micros, fondo) = solo auriculares. Volumen y

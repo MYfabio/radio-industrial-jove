@@ -50,6 +50,7 @@ export function RecordingGuide() {
     ["fix3Q", "fix3A"],
     ["fix4Q", "fix4A"],
     ["fix5Q", "fix5A"],
+    ["fix6Q", "fix6A"],
   ] as const;
 
   return (

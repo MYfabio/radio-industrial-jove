@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  DEFAULT_OUTPUT_KEY,
   StudioEngine,
   detectOutputSupport,
   type InputChannel,
@@ -44,6 +45,13 @@ export interface StudioAudio {
   maxOutputChannels: number;
   micStatus: Record<string, { connected: boolean; mono: boolean }>;
   outputErrors: string[];
+  /** Retard aproximat del retorn per la sortida principal (ms), o null si no se sap. */
+  latencyMs: number | null;
+  /** Per a cada sortida en ús ("" = per defecte), el micro que hi està aparellat. */
+  pairing: Record<string, string | null>;
+  /** Per a cada sortida, el micro que s'aparellaria automàticament. */
+  autoPairing: Record<string, string | null>;
+  outputKeys: string[];
   testing: boolean;
   busy: boolean;
   error: string | null;
@@ -59,9 +67,12 @@ export interface StudioAudio {
   removeMic: (id: string) => void;
   updateMic: (id: string, patch: Partial<Omit<MicConfig, "id">>) => void;
   setOutputs: (ids: string[]) => void;
-  setPair: (pair: number) => void;
+  setChannelPair: (pair: number) => void;
   setMonitor: (patch: Partial<MonitorLevels>) => void;
   setSingleMonitor: (on: boolean) => void;
+  setSelfMonitor: (on: boolean) => void;
+  /** "auto" torna a l'aparellament automàtic; "none" = aquest casc no és de ningú. */
+  setPair: (outputKey: string, value: string) => void;
   setProcessing: (on: boolean) => void;
 }
 
@@ -82,6 +93,10 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
   >({});
   const [outputErrors, setOutputErrors] = useState<string[]>([]);
   const [testing, setTesting] = useState(false);
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [allDevices, setAllDevices] = useState<MediaDeviceInfo[]>([]);
+  const allDevicesRef = useRef<MediaDeviceInfo[]>([]);
+  allDevicesRef.current = allDevices;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,6 +156,66 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
       .filter((id) => id && id !== "default");
   }, []);
 
+  /** Sortides en ús: les marcades i connectades, o la per defecte si no n'hi ha cap. */
+  const outputKeysFor = useCallback(
+    (s: StudioAudioSettings): string[] => {
+      const eff = support.mode === "default" ? [] : effectiveOutputs(s);
+      return eff.length > 0 ? eff : [DEFAULT_OUTPUT_KEY];
+    },
+    [effectiveOutputs, support.mode],
+  );
+
+  /**
+   * Aparellament automàtic casc ↔ micro: un casc USB declara el micro i els
+   * auriculars amb el mateix groupId. La sortida per defecte i el micro per
+   * defecte es resolen amb les entrades "default" del navegador.
+   */
+  const autoPairingFor = useCallback(
+    (s: StudioAudioSettings): Record<string, string | null> => {
+      const all = allDevicesRef.current;
+      const group = (kind: MediaDeviceKind, id: string) =>
+        all.find((d) => d.kind === kind && d.deviceId === (id || "default"))
+          ?.groupId ?? "";
+      const mics = activeMics();
+      const out: Record<string, string | null> = {};
+      outputKeysFor(s).forEach((key) => {
+        const g = group("audiooutput", key);
+        const mic = g
+          ? mics.find((m) => group("audioinput", m.deviceId) === g)
+          : undefined;
+        out[key] = mic?.id ?? null;
+      });
+      return out;
+    },
+    [activeMics, outputKeysFor],
+  );
+
+  const pairingFor = useCallback(
+    (s: StudioAudioSettings): Record<string, string | null> => {
+      const auto = autoPairingFor(s);
+      const ids = new Set(activeMics().map((m) => m.id));
+      const out: Record<string, string | null> = {};
+      Object.keys(auto).forEach((key) => {
+        const manual = s.pairs[key];
+        if (manual === "none") out[key] = null;
+        else if (manual && ids.has(manual)) out[key] = manual;
+        else out[key] = auto[key] ?? null;
+      });
+      return out;
+    },
+    [activeMics, autoPairingFor],
+  );
+
+  const applyPairing = useCallback(
+    (s: StudioAudioSettings) => {
+      engineRef.current?.setPairing(
+        pairingFor(s),
+        multiRef.current ? s.selfMonitor : true,
+      );
+    },
+    [pairingFor],
+  );
+
   const applyOutputs = useCallback(
     async (s: StudioAudioSettings) => {
       const eng = engineRef.current;
@@ -148,8 +223,10 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
       const failed = await eng.setOutputs(effectiveOutputs(s), s.pair);
       setOutputErrors(failed);
       setMaxOutputChannels(eng.maxOutputChannels);
+      setLatencyMs(eng.latencyMs());
+      applyPairing(s);
     },
-    [effectiveOutputs],
+    [applyPairing, effectiveOutputs],
   );
 
   const ensureEngine = useCallback((): StudioEngine => {
@@ -175,6 +252,7 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
         probe.getTracks().forEach((t) => t.stop());
       }
       const all = await navigator.mediaDevices.enumerateDevices();
+      setAllDevices(all);
       setInputs(
         all.filter(
           (d) =>
@@ -206,9 +284,18 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
       await eng.addMic(mic, { processing: s.processing });
     }
     refreshStatus();
+    applyPairing(settingsRef.current);
+    setLatencyMs(eng.latencyMs());
     // Amb el permís concedit, els noms dels dispositius ja es poden llegir.
     void refreshDevices(false);
-  }, [activeMics, ensureEngine, inputs, refreshDevices, refreshStatus]);
+  }, [
+    activeMics,
+    applyPairing,
+    ensureEngine,
+    inputs,
+    refreshDevices,
+    refreshStatus,
+  ]);
 
   const dispose = useCallback(() => {
     engineRef.current?.dispose();
@@ -241,6 +328,11 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
   useEffect(() => {
     engineRef.current?.setLevels(levelsFor(settings));
   }, [settings.monitor, settings.singleMonitor, multi, levelsFor, settings]);
+
+  // Aparellament en directe: micros, parelles manuals, «sentir-me» o dispositius nous.
+  useEffect(() => {
+    applyPairing(settings);
+  }, [settings, allDevices, multi, applyPairing]);
 
   // Canvi de mode (1 micro ↔ diversos) amb els micros oberts: es tornen a obrir.
   const lastMulti = useRef(multi);
@@ -389,7 +481,21 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
     [applyOutputs],
   );
 
-  const setPair = useCallback(
+  const setSelfMonitor = useCallback(
+    (on: boolean) => patchSettings({ selfMonitor: on }),
+    [patchSettings],
+  );
+
+  const setPair = useCallback((outputKey: string, value: string) => {
+    setSettings((cur) => {
+      const pairs = { ...cur.pairs };
+      if (value === "auto") delete pairs[outputKey];
+      else pairs[outputKey] = value;
+      return { ...cur, pairs };
+    });
+  }, []);
+
+  const setChannelPair = useCallback(
     (pair: number) => {
       setSettings((cur) => {
         const next = { ...cur, pair };
@@ -430,6 +536,10 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
     maxOutputChannels,
     micStatus,
     outputErrors,
+    latencyMs,
+    pairing: pairingFor(settings),
+    autoPairing: autoPairingFor(settings),
+    outputKeys: outputKeysFor(settings),
     testing,
     busy,
     error,
@@ -442,9 +552,11 @@ export function useStudioAudio({ multi }: { multi: boolean }): StudioAudio {
     removeMic,
     updateMic,
     setOutputs,
-    setPair,
     setMonitor,
     setSingleMonitor,
+    setSelfMonitor,
+    setPair,
+    setChannelPair,
     setProcessing,
   };
 }
@@ -771,6 +883,45 @@ export function StudioMixer({
                 )}
               </div>
             )}
+            {multi && (
+              <div className="space-y-1.5 rounded-xl border border-border bg-secondary/30 p-2.5">
+                <p className="text-[11px] text-muted-foreground">
+                  {t("pairIntro")}
+                </p>
+                {audio.outputKeys.map((key, i) => {
+                  const manual = settings.pairs[key];
+                  const autoId = audio.autoPairing[key] ?? null;
+                  const autoIdx = mics.findIndex((x) => x.id === autoId);
+                  return (
+                    <label
+                      key={key || "default"}
+                      className="block text-xs text-muted-foreground"
+                    >
+                      {key === DEFAULT_OUTPUT_KEY
+                        ? t("outputDefault")
+                        : outputName(key, i)}
+                      <select
+                        value={manual ?? "auto"}
+                        onChange={(e) => audio.setPair(key, e.target.value)}
+                        className={selectClass}
+                      >
+                        <option value="auto">
+                          {autoIdx >= 0
+                            ? t("pairAutoMic", { n: autoIdx + 1 })
+                            : t("pairAutoNone")}
+                        </option>
+                        {mics.map((x, j) => (
+                          <option key={x.id} value={x.id}>
+                            {t("pairMic", { n: j + 1 })}
+                          </option>
+                        ))}
+                        <option value="none">{t("pairNone")}</option>
+                      </select>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
             {audio.outputErrors.length > 0 && (
               <p className="text-xs text-destructive-foreground">
                 {t("outputFailed", {
@@ -785,7 +936,7 @@ export function StudioMixer({
                 {t("pairLabel")}
                 <select
                   value={Math.min(settings.pair, pairs - 1)}
-                  onChange={(e) => audio.setPair(Number(e.target.value))}
+                  onChange={(e) => audio.setChannelPair(Number(e.target.value))}
                   className={selectClass}
                 >
                   {Array.from({ length: pairs }, (_, p) => (
@@ -821,6 +972,30 @@ export function StudioMixer({
           />
           {t("monitorMicsOn")}
         </label>
+        {multi && (
+          <label
+            className="flex items-start gap-2 text-sm"
+            title={t("selfMonitorHint")}
+          >
+            <input
+              type="checkbox"
+              checked={settings.selfMonitor}
+              onChange={(e) => audio.setSelfMonitor(e.target.checked)}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              {t("selfMonitor")}
+              <span className="block text-[11px] text-muted-foreground">
+                {t("selfMonitorHint")}
+              </span>
+            </span>
+          </label>
+        )}
+        {audio.latencyMs !== null && audio.latencyMs > 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            {t("latency", { ms: audio.latencyMs })}
+          </p>
+        )}
         <Slider
           label={t("monitorMaster")}
           value={settings.monitor.master}

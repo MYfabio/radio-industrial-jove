@@ -15,6 +15,11 @@
  *   es grava. El volum i el panorama de cada micro són de la tira del micro:
  *   afecten tots dos busos, igual que en una taula de mescles real (el retorn
  *   és "post-fader": sents el balanç que s'està gravant).
+ * - Mescla menys u (N-1): cada sortida d'auriculars té el seu propi bus de
+ *   retorn. Si un casc està aparellat amb un micro (el mateix dispositiu USB,
+ *   o triat a mà), aquell casc no rep el seu propi micro: la persona se sent
+ *   de manera natural i no amb la còpia retardada que el navegador retorna
+ *   (que es percep com a eco). Opció «sentir-me a mi mateix» per tornar-la a rebre.
  * - Sortides: la primera fa servir AudioContext.setSinkId (latència mínima i
  *   tria de parell de canals en interfícies de més de 2). Les addicionals (o
  *   totes, si el navegador no té setSinkId al context) van per
@@ -91,7 +96,17 @@ interface ElementOutput {
   deviceId: string;
   dest: MediaStreamAudioDestinationNode;
   el: HTMLAudioElement;
+  bus: OutBus;
 }
+
+/** Bus de retorn d'una sortida concreta: el seu mestre i un guany per micro. */
+interface OutBus {
+  master: GainNode;
+  stripGains: Map<string, GainNode>;
+}
+
+/** Clau d'aparellament de la sortida per defecte del sistema. */
+export const DEFAULT_OUTPUT_KEY = "";
 
 export interface MicConstraintsOptions {
   /** Processament de "videotrucada" (cancel·lació d'eco, soroll, guany automàtic). Per defecte desactivat. */
@@ -118,10 +133,10 @@ export class StudioEngine {
   readonly recordDest: MediaStreamAudioDestinationNode;
   /** Entrada única per a efectes i música de fons (alimenta tots dos busos). */
   readonly fxIn: GainNode;
-  /** Bus d'auriculars. */
-  readonly monMics: GainNode;
+  /** Nivell del fons/efectes al retorn (comú a totes les sortides). */
   readonly monFx: GainNode;
-  readonly monMaster: GainNode;
+  /** Bus de retorn de la sortida principal (la del context). */
+  private primaryBus: OutBus;
 
   readonly support: OutputSupport;
   private strips = new Map<string, Strip>();
@@ -131,6 +146,9 @@ export class StudioEngine {
   private primaryRouting: AudioNode[] = [];
   private elementOutputs = new Map<string, ElementOutput>();
   private onStripChange: (() => void) | null = null;
+  /** sortida (deviceId, o "" la per defecte) → id de la tira del seu micro. */
+  private pairing = new Map<string, string>();
+  private selfMonitor = false;
 
   constructor(levels: MonitorLevels) {
     this.ctx = new AudioContext({ latencyHint: "interactive" });
@@ -144,11 +162,8 @@ export class StudioEngine {
     this.program.connect(this.analyser);
     this.program.connect(this.recordDest);
 
-    this.monMics = this.ctx.createGain();
     this.monFx = this.ctx.createGain();
-    this.monMaster = this.ctx.createGain();
-    this.monMics.connect(this.monMaster);
-    this.monFx.connect(this.monMaster);
+    this.primaryBus = this.createBus();
 
     this.fxIn = this.ctx.createGain();
     this.fxIn.connect(this.program);
@@ -169,6 +184,85 @@ export class StudioEngine {
     return this.ctx.destination.maxChannelCount || 2;
   }
 
+  /** Mestre del retorn de la sortida principal (per a proves i mesures). */
+  get monMaster(): GainNode {
+    return this.primaryBus.master;
+  }
+
+  /** Retard aproximat del retorn per la sortida principal, en mil·lisegons. */
+  latencyMs(): number {
+    const base = this.ctx.baseLatency || 0;
+    const out =
+      (this.ctx as AudioContext & { outputLatency?: number }).outputLatency ||
+      0;
+    return Math.round((base + out) * 1000);
+  }
+
+  /* ------------------------- Busos de retorn ------------------------- */
+
+  private createBus(): OutBus {
+    const bus: OutBus = {
+      master: this.ctx.createGain(),
+      stripGains: new Map(),
+    };
+    this.monFx.connect(bus.master);
+    this.strips.forEach((strip) => this.connectStripToBus(strip, bus));
+    bus.master.gain.value = this.levels.master;
+    return bus;
+  }
+
+  private destroyBus(bus: OutBus) {
+    bus.stripGains.forEach((g) => {
+      try {
+        g.disconnect();
+      } catch {
+        // Ja desconnectat.
+      }
+    });
+    try {
+      this.monFx.disconnect(bus.master);
+    } catch {
+      // Ja desconnectat.
+    }
+    try {
+      bus.master.disconnect();
+    } catch {
+      // Ja desconnectat.
+    }
+  }
+
+  private connectStripToBus(strip: Strip, bus: OutBus) {
+    const g = this.ctx.createGain();
+    g.gain.value = 0;
+    strip.panner.connect(g);
+    g.connect(bus.master);
+    bus.stripGains.set(strip.config.id, g);
+  }
+
+  private allBuses(): { key: string; bus: OutBus }[] {
+    const list = [
+      { key: this.primaryDeviceId ?? DEFAULT_OUTPUT_KEY, bus: this.primaryBus },
+    ];
+    this.elementOutputs.forEach((o) =>
+      list.push({ key: o.deviceId, bus: o.bus }),
+    );
+    return list;
+  }
+
+  /**
+   * Quin micro és de cada casc (clau = deviceId de la sortida, "" = per defecte)
+   * i si cadascú s'ha de sentir a si mateix.
+   */
+  setPairing(pairing: Record<string, string | null>, selfMonitor: boolean) {
+    this.pairing = new Map(
+      Object.entries(pairing).filter(
+        (e): e is [string, string] => typeof e[1] === "string" && e[1] !== "",
+      ),
+    );
+    this.selfMonitor = selfMonitor;
+    this.applyLevels();
+  }
+
   /* ----------------------------- Micròfons ----------------------------- */
 
   async addMic(config: MicConfig, opts: MicConstraintsOptions): Promise<void> {
@@ -181,7 +275,7 @@ export class StudioEngine {
   private attachStream(config: MicConfig, stream: MediaStream) {
     const ctx = this.ctx;
     const old = this.strips.get(config.id);
-    if (old) this.disposeStrip(old);
+    if (old) this.removeMic(config.id);
 
     const track = stream.getAudioTracks()[0];
     const sourceChannels = track?.getSettings().channelCount ?? 2;
@@ -204,9 +298,8 @@ export class StudioEngine {
     selL.connect(mono);
     selR.connect(mono);
     mono.connect(volume).connect(panner);
-    // Una sola connexió a cada bus: la veu no es duplica mai.
+    // Una sola connexió al bus d'emissió: la veu no es duplica mai a la gravació.
     panner.connect(this.program);
-    panner.connect(this.monMics);
 
     const strip: Strip = {
       config: { ...config },
@@ -222,7 +315,9 @@ export class StudioEngine {
       connected: true,
     };
     this.strips.set(config.id, strip);
+    this.allBuses().forEach(({ bus }) => this.connectStripToBus(strip, bus));
     this.applyStrip(strip);
+    this.applyLevels();
 
     track?.addEventListener("ended", () => {
       strip.connected = false;
@@ -247,6 +342,16 @@ export class StudioEngine {
     if (!strip) return;
     this.disposeStrip(strip);
     this.strips.delete(id);
+    this.allBuses().forEach(({ bus }) => {
+      const g = bus.stripGains.get(id);
+      if (!g) return;
+      try {
+        g.disconnect();
+      } catch {
+        // Ja desconnectat.
+      }
+      bus.stripGains.delete(id);
+    });
   }
 
   private disposeStrip(strip: Strip) {
@@ -319,13 +424,16 @@ export class StudioEngine {
 
   private applyLevels() {
     const t = this.ctx.currentTime;
-    this.monMics.gain.setTargetAtTime(
-      this.levels.micsEnabled ? this.levels.mics : 0,
-      t,
-      0.02,
-    );
+    const micLevel = this.levels.micsEnabled ? this.levels.mics : 0;
     this.monFx.gain.setTargetAtTime(this.levels.fx, t, 0.02);
-    this.monMaster.gain.setTargetAtTime(this.levels.master, t, 0.02);
+    this.allBuses().forEach(({ key, bus }) => {
+      bus.master.gain.setTargetAtTime(this.levels.master, t, 0.02);
+      const own = this.pairing.get(key);
+      bus.stripGains.forEach((g, stripId) => {
+        const isOwnMic = !this.selfMonitor && own === stripId;
+        g.gain.setTargetAtTime(isOwnMic ? 0 : micLevel, t, 0.02);
+      });
+    });
   }
 
   /* ------------------------------- Sortides ------------------------------- */
@@ -356,6 +464,7 @@ export class StudioEngine {
       }
       this.routePrimary();
       failed.push(...(await this.syncElementOutputs(rest)));
+      this.applyLevels();
     } else if (this.support.mode === "element") {
       // Sense setSinkId al context: totes les sortides van per <audio>, i el
       // context no sona directament (si no, el so sortiria duplicat pel defecte).
@@ -432,36 +541,31 @@ export class StudioEngine {
     }
     for (const id of deviceIds) {
       if (this.elementOutputs.has(id)) continue;
+      // (el bus nou neix amb els micros a 0; applyLevels els posa al seu nivell)
+      const bus = this.createBus();
       const dest = this.ctx.createMediaStreamDestination();
-      this.monMaster.connect(dest);
+      bus.master.connect(dest);
       const el = new Audio();
       el.autoplay = true;
       el.srcObject = dest.stream;
       try {
         await (el as unknown as SinkCapable).setSinkId(id);
         await el.play();
-        this.elementOutputs.set(id, { deviceId: id, dest, el });
+        this.elementOutputs.set(id, { deviceId: id, dest, el, bus });
       } catch {
-        try {
-          this.monMaster.disconnect(dest);
-        } catch {
-          // Ja desconnectat.
-        }
+        this.destroyBus(bus);
         el.srcObject = null;
         failed.push(id);
       }
     }
+    this.applyLevels();
     return failed;
   }
 
   private removeElementOutput(out: ElementOutput) {
     out.el.pause();
     out.el.srcObject = null;
-    try {
-      this.monMaster.disconnect(out.dest);
-    } catch {
-      // Ja desconnectat.
-    }
+    this.destroyBus(out.bus);
     this.elementOutputs.delete(out.deviceId);
   }
 

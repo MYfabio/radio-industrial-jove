@@ -153,6 +153,16 @@ export const guideMessages = defineMessages({
     en: 'Use Chrome or Edge and allow the microphone. Then press "Prova els micros" once.',
   },
 
+  fix6Q: {
+    ca: "Em sento a mi mateix amb eco.",
+    es: "Me oigo a mí mismo con eco.",
+    en: "I hear myself with an echo.",
+  },
+  fix6A: {
+    ca: "Deixa «Sentir-me a mi mateix» desactivat i comprova que cada casc està aparellat amb el seu micro. A Windows, desactiva «Escolta aquest dispositiu» (Configuració → So → el micro → Propietats → Escolta) i, si el programa del casc en té, el «sidetone» o retorn del micro.",
+    es: "Deja «Sentir-me a mi mateix» desactivado y comprueba que cada casco está emparejado con su micro. En Windows, desactiva «Escuchar este dispositivo» (Configuración → Sonido → el micro → Propiedades → Escuchar) y, si el programa del casco lo tiene, el «sidetone» o retorno del micro.",
+    en: 'Leave "Sentir-me a mi mateix" off and check each headset is paired with its own mic. On Windows, turn off "Listen to this device" (Settings → Sound → the mic → Properties → Listen) and, if the headset software has one, the mic "sidetone".',
+  },
   ruleTitle: { ca: "Norma d'or", es: "Norma de oro", en: "Golden rule" },
   rule: {
     ca: "Sempre cascos, mai altaveus: la veu tornaria al micro i xiularia.",

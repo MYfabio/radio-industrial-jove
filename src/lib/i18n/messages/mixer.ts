@@ -169,4 +169,44 @@ export const mixerMessages = defineMessages({
     es: "No se han podido abrir los micrófonos. Revisa los permisos del navegador.",
     en: "Could not open the microphones. Check the browser permissions.",
   },
+  pairIntro: {
+    ca: "De qui és cada casc? Així cadascú sent els altres però no la seva pròpia veu (que tornaria amb retard, com un eco).",
+    es: "¿De quién es cada casco? Así cada uno oye a los demás pero no su propia voz (que volvería con retardo, como un eco).",
+    en: "Whose headset is each one? Then everyone hears the others but not their own voice (which would come back delayed, like an echo).",
+  },
+  pairAutoMic: {
+    ca: "Automàtic: Micro {n}",
+    es: "Automático: Micro {n}",
+    en: "Automatic: Mic {n}",
+  },
+  pairAutoNone: {
+    ca: "Automàtic: cap",
+    es: "Automático: ninguno",
+    en: "Automatic: none",
+  },
+  pairMic: {
+    ca: "És del Micro {n}",
+    es: "Es del Micro {n}",
+    en: "Belongs to Mic {n}",
+  },
+  pairNone: {
+    ca: "No és de cap micro",
+    es: "No es de ningún micro",
+    en: "Not paired with any mic",
+  },
+  selfMonitor: {
+    ca: "Sentir-me a mi mateix",
+    es: "Oírme a mí mismo",
+    en: "Hear myself",
+  },
+  selfMonitorHint: {
+    ca: "Desactivat, el teu casc no et retorna la teva veu i no hi ha eco. Activa-ho només si la vols sentir.",
+    es: "Desactivado, tu casco no te devuelve tu voz y no hay eco. Actívalo solo si la quieres oír.",
+    en: "When off, your headset does not play your own voice back, so there is no echo. Turn it on only if you want to hear it.",
+  },
+  latency: {
+    ca: "Retard del retorn: ~{ms} ms",
+    es: "Retardo del retorno: ~{ms} ms",
+    en: "Monitor delay: ~{ms} ms",
+  },
 });
