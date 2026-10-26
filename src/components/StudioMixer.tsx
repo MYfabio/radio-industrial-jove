@@ -4,6 +4,8 @@
  * desconnexions; el component StudioMixer n'és la interfície.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { GUIDE_ANCHOR } from "@/components/RecordingGuide";
 import {
   Headphones,
   Mic,
@@ -489,6 +491,36 @@ function panLabel(t: Translate<typeof m>, pan: number): string {
   return pan < 0 ? `${t("panLeft")} ${pct}%` : `${t("panRight")} ${pct}%`;
 }
 
+/**
+ * Noms visibles dels dispositius: si dos tenen el mateix nom (dos cascos del
+ * mateix model), s'hi afegeix (1), (2)... perquè es puguin distingir.
+ */
+function numberedLabels(
+  devices: MediaDeviceInfo[],
+  fallback: (n: number) => string,
+): Map<string, string> {
+  const counts = new Map<string, number>();
+  devices.forEach((d) => {
+    if (d.label) counts.set(d.label, (counts.get(d.label) ?? 0) + 1);
+  });
+  const seen = new Map<string, number>();
+  const out = new Map<string, string>();
+  devices.forEach((d, i) => {
+    if (!d.label) {
+      out.set(d.deviceId, fallback(i + 1));
+      return;
+    }
+    if ((counts.get(d.label) ?? 0) < 2) {
+      out.set(d.deviceId, d.label);
+      return;
+    }
+    const n = (seen.get(d.label) ?? 0) + 1;
+    seen.set(d.label, n);
+    out.set(d.deviceId, `${d.label} (${n})`);
+  });
+  return out;
+}
+
 const selectClass =
   "mt-1 w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground";
 
@@ -506,8 +538,10 @@ export function StudioMixer({
   const t = useT(m);
   const { settings } = audio;
   const mics = multi ? settings.mics : [];
+  const inputNames = numberedLabels(audio.inputs, (n) => t("deviceN", { n }));
+  const outputNames = numberedLabels(audio.outputs, (n) => t("deviceN", { n }));
   const outputName = (id: string, i: number) =>
-    audio.outputs.find((d) => d.deviceId === id)?.label ||
+    outputNames.get(id) ||
     settings.outputLabels[id] ||
     t("deviceN", { n: i + 1 });
   const pairs = Math.floor(audio.maxOutputChannels / 2);
@@ -529,6 +563,14 @@ export function StudioMixer({
         />
         {t("multiMode")}
       </label>
+      <Link
+        to="/ajuda"
+        hash={GUIDE_ANCHOR}
+        target="_blank"
+        className="inline-block text-xs font-semibold text-accent hover:underline"
+      >
+        {t("howTo")}
+      </Link>
 
       {(multi || monitorOn) && (
         <p className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-300">
@@ -591,7 +633,7 @@ export function StudioMixer({
                   <option value="">{t("micDefault")}</option>
                   {audio.inputs.map((d, j) => (
                     <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || t("deviceN", { n: j + 1 })}
+                      {inputNames.get(d.deviceId) ?? t("deviceN", { n: j + 1 })}
                     </option>
                   ))}
                 </select>

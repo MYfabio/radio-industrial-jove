@@ -2,6 +2,11 @@
 import { defineMessages } from "../index";
 
 export const mixerMessages = defineMessages({
+  howTo: {
+    ca: "Com es fa? Guia per gravar amb dos cascos",
+    es: "¿Cómo se hace? Guía para grabar con dos cascos",
+    en: "How does it work? Guide to recording with two headsets",
+  },
   multiMode: {
     ca: "Diversos micròfons",
     es: "Varios micrófonos",
