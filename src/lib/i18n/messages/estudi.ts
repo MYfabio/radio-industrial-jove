@@ -214,15 +214,15 @@ export const estudiMessages = defineMessages({
 
   // Sons de la classe (galeria compartida)
   classSounds: {
-    ca: "Sons de la classe",
-    es: "Sonidos de la clase",
-    en: "Class sounds",
+    ca: "Els meus sons",
+    es: "Mis sonidos",
+    en: "My sounds",
   },
   uploadSounds: { ca: "Pujar sons", es: "Subir sonidos", en: "Upload sounds" },
   galleryShared: {
-    ca: "Galeria compartida: tothom de l'escola pot fer servir els sons que hi puja la classe.",
-    es: "Galería compartida: todo el mundo de la escuela puede usar los sonidos que sube la clase.",
-    en: "Shared gallery: everyone at school can use the sounds the class uploads.",
+    ca: "Galeria personal: només tu veus i fas servir els sons que hi puges.",
+    es: "Galería personal: solo tú ves y usas los sonidos que subes.",
+    en: "Personal gallery: only you can see and use the sounds you upload.",
   },
   galleryLoginHint: {
     ca: "Inicia sessió per afegir-ne de nous.",

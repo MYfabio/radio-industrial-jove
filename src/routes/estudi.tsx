@@ -45,6 +45,7 @@ import { playBuffer, randomEmoji } from "@/lib/customSounds";
 import { blobToBase64 } from "@/lib/publishPodcast";
 import {
   fetchSounds,
+  fetchSoundDataFn,
   uploadSoundFn,
   deleteSoundFn,
 } from "@/lib/sounds.functions";
@@ -279,9 +280,23 @@ function RadioStudio() {
       .catch(() => undefined);
   }, []);
 
+  const userId = user?.id;
   useEffect(() => {
-    refreshSounds();
-  }, [refreshSounds]);
+    // La galeria és de cada alumne: en canviar de sessió no en queda res a la vista.
+    setSounds([]);
+    bufferCache.current.clear();
+    if (userId) refreshSounds();
+  }, [userId, refreshSounds]);
+
+  const loadSoundBuffer = async (ctx: AudioContext, soundId: number) => {
+    const cached = bufferCache.current.get(soundId);
+    if (cached) return cached;
+    const { dataBase64 } = await fetchSoundDataFn({ data: { id: soundId } });
+    const bytes = Uint8Array.from(atob(dataBase64), (c) => c.charCodeAt(0));
+    const buffer = await ctx.decodeAudioData(bytes.buffer);
+    bufferCache.current.set(soundId, buffer);
+    return buffer;
+  };
 
   const destinationsNow = (_ctx: AudioContext): AudioNode[] => [
     audio.ensureEngine().fxIn,
@@ -290,12 +305,7 @@ function RadioStudio() {
   const triggerCustom = async (sound: SoundRow) => {
     const ctx = ensureCtx();
     try {
-      let buffer = bufferCache.current.get(sound.id);
-      if (!buffer) {
-        const res = await fetch(`/api/public/sound/${sound.id}`);
-        buffer = await ctx.decodeAudioData(await res.arrayBuffer());
-        bufferCache.current.set(sound.id, buffer);
-      }
+      const buffer = await loadSoundBuffer(ctx, sound.id);
       playBuffer(ctx, buffer, destinationsNow(ctx), {
         volume: fxVolume,
         fadeIn: fxFade,
@@ -393,20 +403,14 @@ function RadioStudio() {
     }
   };
 
-  /** "calma"/"noticies" es sintetitzen; "so:123" és música pujada per la classe. */
+  /** "calma"/"noticies" es sintetitzen; "so:123" és música pujada per l'alumne. */
   const startBackgroundTrack = async (
     id: string,
     ctx: AudioContext,
     destinations: AudioNode[],
   ): Promise<BgHandle> => {
     if (id.startsWith("so:")) {
-      const soundId = Number(id.slice(3));
-      let buffer = bufferCache.current.get(soundId);
-      if (!buffer) {
-        const res = await fetch(`/api/public/sound/${soundId}`);
-        buffer = await ctx.decodeAudioData(await res.arrayBuffer());
-        bufferCache.current.set(soundId, buffer);
-      }
+      const buffer = await loadSoundBuffer(ctx, Number(id.slice(3)));
       return startBackgroundFromBuffer(ctx, buffer, destinations, bgVolume);
     }
     return startBackground(ctx, id, destinations, bgVolume);
@@ -927,19 +931,33 @@ function RadioStudio() {
                     .map((s) => {
                       const id = `so:${s.id}`;
                       return (
-                        <button
-                          key={id}
-                          onClick={() => toggleBackground(id)}
-                          aria-pressed={bgTrack === id}
-                          title={s.name}
-                          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-transform hover:scale-105 active:scale-95 ${
-                            bgTrack === id
-                              ? "border-accent bg-accent/20 text-accent"
-                              : "border-border bg-secondary/40"
-                          }`}
-                        >
-                          <span className="text-base">{s.emoji}</span> {s.name}
-                        </button>
+                        <div key={id} className="relative">
+                          <button
+                            onClick={() => toggleBackground(id)}
+                            aria-pressed={bgTrack === id}
+                            title={s.name}
+                            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-transform hover:scale-105 active:scale-95 ${
+                              bgTrack === id
+                                ? "border-accent bg-accent/20 text-accent"
+                                : "border-border bg-secondary/40"
+                            }`}
+                          >
+                            <span className="text-base">{s.emoji}</span>{" "}
+                            {s.name}
+                          </button>
+                          {user && user.id === s.owner_user_id && (
+                            <button
+                              onClick={() => {
+                                if (bgTrack === id) stopBackground();
+                                void removeCustom(s.id);
+                              }}
+                              aria-label={t("deleteSound", { name: s.name })}
+                              className="absolute -right-1.5 -top-1.5 rounded-full border border-border bg-card p-1 text-muted-foreground transition-colors hover:text-destructive"
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          )}
+                        </div>
                       );
                     })}
                   {bgTrack && (

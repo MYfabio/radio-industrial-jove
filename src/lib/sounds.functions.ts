@@ -3,16 +3,36 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Role } from "./settings.server";
 import type { SoundKind } from "./sounds.server";
 
-export const fetchSounds = createServerFn({ method: "GET" }).handler(async () => {
-  const { getSql } = await import("./podcasts.server");
-  const { listSounds } = await import("./sounds.server");
-  const sql = getSql();
-  try {
-    return await listSounds(sql);
-  } finally {
-    await sql.end();
-  }
-});
+/** Només els sons de qui ha iniciat sessió: la galeria no es comparteix. */
+export const fetchSounds = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getSql } = await import("./podcasts.server");
+    const { listSounds } = await import("./sounds.server");
+    const sql = getSql();
+    try {
+      return await listSounds(sql, context.userId);
+    } finally {
+      await sql.end();
+    }
+  });
+
+/** Àudio d'un so propi, en base64. */
+export const fetchSoundDataFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: number }) => input)
+  .handler(async ({ context, data }) => {
+    const { getSql } = await import("./podcasts.server");
+    const { getSoundData } = await import("./sounds.server");
+    const sql = getSql();
+    try {
+      const found = await getSoundData(sql, data.id, context.userId);
+      if (!found) throw new Error("So no trobat.");
+      return { dataBase64: Buffer.from(found.data).toString("base64") };
+    } finally {
+      await sql.end();
+    }
+  });
 
 export interface UploadSoundInput {
   name: string;

@@ -1,7 +1,7 @@
 /**
- * Galeria de sons compartida: en lloc de desar-se al navegador de cada
- * alumne (IndexedDB), es desa a Railway Postgres perquè tota la classe
- * pugui fer servir els sons que hi puja qualsevol company.
+ * Galeria de sons personal: es desa a Railway Postgres perquè l'alumne la
+ * trobi des de qualsevol ordinador, però cada so només és visible i audible
+ * per a qui l'ha pujat.
  */
 import type { Sql } from "./podcasts.server";
 import { sqlText, sqlInt, sqlBytea } from "./sqlLiteral";
@@ -42,11 +42,12 @@ function decode(base64: string): Buffer {
   return Buffer.from(bytes);
 }
 
-export async function listSounds(sql: Sql): Promise<SoundRow[]> {
+export async function listSounds(sql: Sql, ownerId: string): Promise<SoundRow[]> {
   await ensureSoundsSchema(sql);
   const rows = await sql.unsafe(`
     SELECT id, name, emoji, mime, kind, owner_user_id, created_at
       FROM sounds
+     WHERE owner_user_id = ${sqlText(ownerId)}
      ORDER BY created_at DESC
      LIMIT 200
   `);
@@ -70,8 +71,10 @@ export async function createSound(
   return row as unknown as SoundRow;
 }
 
-export async function getSoundData(sql: Sql, id: number) {
-  const [row] = await sql.unsafe(`SELECT data, mime FROM sounds WHERE id = ${sqlInt(id)}`);
+export async function getSoundData(sql: Sql, id: number, ownerId: string) {
+  const [row] = await sql.unsafe(
+    `SELECT data, mime FROM sounds WHERE id = ${sqlInt(id)} AND owner_user_id = ${sqlText(ownerId)}`,
+  );
   if (!row) return null;
   return { data: row["data"] as Uint8Array, mime: row["mime"] as string };
 }
