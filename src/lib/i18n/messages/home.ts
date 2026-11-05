@@ -68,6 +68,20 @@ export const homeMessages = defineMessages({
     en: 'No account needed to record and publish. Sign in with Google only if you want your own class or "My space".',
   },
 
+  // Problema i perfil (SEO)
+  problemTitle: { ca: "Quin problema resol?", es: "¿Qué problema resuelve?", en: "What problem does it solve?" },
+  problemText: {
+    ca: "Fer ràdio a l'aula sol exigir equips, programes d'edició i molt de temps del docent. Aquí l'alumnat grava, edita amb IA i publica des del navegador, amb la supervisió del professorat.",
+    es: "Hacer radio en el aula suele exigir equipos, programas de edición y mucho tiempo del docente. Aquí el alumnado graba, edita con IA y publica desde el navegador, con la supervisión del profesorado.",
+    en: "Making radio in class usually needs equipment, editing software and a lot of teacher time. Here students record, edit with AI and publish from the browser, supervised by their teachers.",
+  },
+  profileTitle: { ca: "Per a quina etapa o perfil serveix?", es: "¿Para qué etapa o perfil sirve?", en: "Which stage or profile is it for?" },
+  profileText: {
+    ca: "Primària, Secundària i Batxillerat. Docents de llengua i comunicació oral, i coordinacions de projectes de comunicació del centre.",
+    es: "Primaria, Secundaria y Bachillerato. Docentes de lengua y comunicación oral, y coordinaciones de proyectos de comunicación del centro.",
+    en: "Primary, Secondary and Bachillerato. Language and oral-communication teachers, and school communication project coordinators.",
+  },
+
   // Com funciona
   howItWorks: { ca: "Com funciona", es: "Cómo funciona", en: "How it works" },
   step1Title: { ca: "1. Grava", es: "1. Graba", en: "1. Record" },

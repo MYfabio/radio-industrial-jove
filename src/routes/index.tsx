@@ -130,6 +130,18 @@ function LandingPage() {
           </p>
         </section>
 
+        {/* Problema i perfil */}
+        <section className="mt-16 grid gap-4 sm:mt-24 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="text-base font-bold">{t("problemTitle")}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{t("problemText")}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="text-base font-bold">{t("profileTitle")}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{t("profileText")}</p>
+          </div>
+        </section>
+
         {/* Com funciona */}
         <section className="mt-16 sm:mt-24">
           <h2 className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
