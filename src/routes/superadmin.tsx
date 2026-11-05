@@ -100,7 +100,7 @@ function SuperAdminPanel() {
 
   const submit = async () => {
     setError(null);
-    if (!name.trim() || !domain.trim() || !coordinadorEmail.trim()) {
+    if (!name.trim() || !coordinadorEmail.trim()) {
       setError(t("fillAll"));
       return;
     }

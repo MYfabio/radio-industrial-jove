@@ -69,7 +69,7 @@ export const createSchoolFn = createServerFn({ method: "POST" })
       const name = data.name.trim();
       if (!name) throw new Error(await msg("schoolNameRequired"));
       const domain = data.googleDomain.trim().toLowerCase();
-      if (!domain || !domain.includes("."))
+      if (domain && !domain.includes("."))
         throw new Error(await msg("domainInvalid"));
       const email = data.coordinadorEmail.trim().toLowerCase();
       if (!email.includes("@"))
@@ -78,7 +78,7 @@ export const createSchoolFn = createServerFn({ method: "POST" })
         return await createSchool(sql, {
           name,
           radioName: data.radioName.trim() || name,
-          googleDomain: domain,
+          googleDomain: domain || null,
           coordinadorEmail: email,
           createdBy: context.userId,
         });

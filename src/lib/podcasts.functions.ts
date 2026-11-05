@@ -178,7 +178,7 @@ export interface SchoolWallInput {
 /**
  * Mur d'una escola (/escola/$slug). Si el coordinador no ha activat
  * "compartir fora de l'escola", cal haver iniciat sessió amb un correu del
- * domini de l'escola per veure'l.
+ * domini de l'escola o ser-ne membre per veure'l.
  */
 export const fetchSchoolWall = createServerFn({ method: "GET" })
   .middleware([optionalSupabaseAuth])
@@ -196,10 +196,23 @@ export const fetchSchoolWall = createServerFn({ method: "GET" })
         const school = await getSchoolBySlug(sql, data.slug);
         if (!school) throw new Error(await msg("schoolNotFound"));
 
-        if (!school.allow_external_sharing && school.google_domain) {
-          const domain = school.google_domain.toLowerCase();
+        if (!school.allow_external_sharing) {
+          const domain = school.google_domain?.toLowerCase();
           const email = context.email?.toLowerCase() ?? "";
-          if (!email.endsWith(`@${domain}`)) {
+          let allowed = !!domain && email.endsWith(`@${domain}`);
+          // Membres donats d'alta amb un altre correu (p. ex. @xtec.cat).
+          if (!allowed && context.userId) {
+            const { ensureSettingsSchema, getOrCreateProfile } =
+              await import("./settings.server");
+            await ensureSettingsSchema(sql);
+            const profile = await getOrCreateProfile(
+              sql,
+              context.userId,
+              context.email ?? "",
+            );
+            allowed = profile.school_id === school.id;
+          }
+          if (!allowed) {
             return {
               locked: true,
               allowedDomain: school.google_domain,

@@ -28,9 +28,9 @@ export const escolaWallMessages = defineMessages({
     en: "{count} podcasts shared by this school's classes.",
   },
   lockedDomain: {
-    ca: "Inicia sessió amb un compte de Google d'aquesta escola (@{domain}) per veure'l.",
-    es: "Inicia sesión con una cuenta de Google de esta escuela (@{domain}) para verlo.",
-    en: "Sign in with a Google account from this school (@{domain}) to see it.",
+    ca: "Inicia sessió amb un compte de Google d'aquesta escola (@{domain}) o amb el correu amb què t'hi han donat d'alta per veure'l.",
+    es: "Inicia sesión con una cuenta de Google de esta escuela (@{domain}) o con el correo con el que te han dado de alta para verlo.",
+    en: "Sign in with a Google account from this school (@{domain}) or the email you were registered with to see it.",
   },
   lockedGeneric: {
     ca: "Aquest mur és privat.",

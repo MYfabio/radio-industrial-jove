@@ -54,9 +54,9 @@ export const superadminMessages = defineMessages({
     en: "Radio name (optional)",
   },
   googleDomain: {
-    ca: "Domini de Google (escola.org)",
-    es: "Dominio de Google (escuela.org)",
-    en: "Google domain (school.org)",
+    ca: "Domini de Google de l'escola (opcional; no xtec.cat)",
+    es: "Dominio de Google de la escuela (opcional; no xtec.cat)",
+    en: "School Google domain (optional; not xtec.cat)",
   },
   coordinadorEmail: {
     ca: "Correu del coordinador",
