@@ -235,6 +235,8 @@ function RadioStudio() {
   const streamRef = useRef<MediaStream[]>([]);
   const bgRef = useRef<BgHandle | null>(null);
   const bgTrackRef = useRef<string | null>(null);
+  /** Si ha sonat música de fons durant la gravació: l'edició automàtica no hi talla pauses. */
+  const bgUsedRef = useRef(false);
 
   useEffect(() => {
     if (status !== "recording") return;
@@ -426,8 +428,10 @@ function RadioStudio() {
       const ctx = ensureCtx();
       void startBackgroundTrack(next, ctx, destinationsNow(ctx))
         .then((handle) => {
-          if (bgTrackRef.current === next) bgRef.current = handle;
-          else handle.stop();
+          if (bgTrackRef.current === next) {
+            bgRef.current = handle;
+            if (recorderRef.current) bgUsedRef.current = true;
+          } else handle.stop();
         })
         .catch(() => setError(t("bgFailed")));
     }
@@ -465,6 +469,7 @@ function RadioStudio() {
       };
       recorder.start(100);
       recorderRef.current = recorder;
+      bgUsedRef.current = bgRef.current !== null;
 
       setAudioUrl(null);
       setEdited(null);
@@ -510,7 +515,9 @@ function RadioStudio() {
     setError(null);
     setAi(null);
     try {
-      const result = await autoEdit(blobRef.current);
+      const result = await autoEdit(blobRef.current, {
+        music: bgUsedRef.current,
+      });
       setEdited(result);
 
       // Edició amb IA: transcriu i proposa títol, resum, capítols i consells
