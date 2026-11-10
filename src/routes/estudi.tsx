@@ -20,6 +20,8 @@ import {
   Printer,
   ExternalLink,
   Palette,
+  Save,
+  FolderOpen,
 } from "lucide-react";
 import { Waveform } from "@/components/Waveform";
 import { LevelMeter } from "@/components/LevelMeter";
@@ -31,6 +33,14 @@ import { Logo } from "@/components/Logo";
 import { StudioMixer, useStudioAudio } from "@/components/StudioMixer";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { EFFECTS, playEffect, type EffectId } from "@/lib/soundEffects";
 import { SITE_NAME, CANVA_COVER_TEMPLATE_URL } from "@/lib/siteConfig";
 import { autoEdit, type AutoEditResult } from "@/lib/autoEdit";
@@ -50,6 +60,15 @@ import {
   deleteSoundFn,
 } from "@/lib/sounds.functions";
 import type { SoundRow, SoundKind } from "@/lib/sounds.server";
+import {
+  fetchDraftsFn,
+  saveDraftFn,
+  addDraftSegmentFn,
+  fetchDraftSegmentFn,
+  deleteDraftFn,
+} from "@/lib/drafts.functions";
+import type { DraftRow } from "@/lib/drafts.server";
+import { joinSegments } from "@/lib/joinSegments";
 import { useAuth } from "@/lib/auth";
 import { TEMPLATES, type PodcastTemplate } from "@/lib/podcastTemplates";
 import { printTemplateGuide } from "@/lib/printTemplate";
@@ -237,6 +256,16 @@ function RadioStudio() {
   const bgTrackRef = useRef<string | null>(null);
   /** Si ha sonat música de fons durant la gravació: l'edició automàtica no hi talla pauses. */
   const bgUsedRef = useRef(false);
+
+  // Projecte a mig fer: trams gravats (un per sessió) i quants ja són al servidor.
+  const segmentsRef = useRef<Blob[]>([]);
+  const savedSegmentsRef = useRef(0);
+  const [draftId, setDraftId] = useState<number | null>(null);
+  const [drafts, setDrafts] = useState<DraftRow[]>([]);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [prepOpen, setPrepOpen] = useState(false);
+  const [prepSkip, setPrepSkip] = useState(false);
 
   useEffect(() => {
     if (status !== "recording") return;
@@ -444,8 +473,9 @@ function RadioStudio() {
     bgRef.current = null;
   };
 
-  const start = async () => {
+  const start = async (append = false) => {
     setError(null);
+    setDraftSaved(false);
     try {
       // Micros: el motor els obre amb el processament de videotrucada
       // desactivat per defecte (configurable), els passa a mono i els envia
@@ -464,20 +494,170 @@ function RadioStudio() {
       };
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        blobRef.current = blob;
-        setAudioUrl(URL.createObjectURL(blob));
+        segmentsRef.current.push(blob);
+        void showSegments();
       };
       recorder.start(100);
       recorderRef.current = recorder;
-      bgUsedRef.current = bgRef.current !== null;
+      if (append) {
+        bgUsedRef.current = bgUsedRef.current || bgRef.current !== null;
+      } else {
+        bgUsedRef.current = bgRef.current !== null;
+        segmentsRef.current = [];
+        savedSegmentsRef.current = 0;
+        setDraftId(null);
+        setSeconds(0);
+      }
 
       setAudioUrl(null);
       setEdited(null);
+      setAi(null);
       setMp3Url(null);
-      setSeconds(0);
       setStatus("recording");
     } catch {
       setError(t("micAccessFailed"));
+    }
+  };
+
+  /** Abans d'una gravació nova, recorda preparar la música i els efectes. */
+  const requestStart = () => {
+    let skip = false;
+    try {
+      skip = localStorage.getItem("studioSkipPrep") === "1";
+    } catch {
+      // Sense emmagatzematge: es mostra sempre.
+    }
+    if (skip) void start();
+    else setPrepOpen(true);
+  };
+
+  const confirmPrep = () => {
+    if (prepSkip) {
+      try {
+        localStorage.setItem("studioSkipPrep", "1");
+      } catch {
+        // Ignora-ho.
+      }
+    }
+    setPrepOpen(false);
+    void start();
+  };
+
+  /** Mostra la gravació sencera: un sol tram tal qual, o tots units. */
+  const showSegments = async () => {
+    const segments = segmentsRef.current;
+    if (segments.length === 0) return;
+    try {
+      const blob =
+        segments.length === 1 ? segments[0]! : await joinSegments(segments);
+      blobRef.current = blob;
+      setAudioUrl(URL.createObjectURL(blob));
+    } catch {
+      setError(t("draftJoinFailed"));
+    }
+  };
+
+  const refreshDrafts = useCallback(() => {
+    fetchDraftsFn()
+      .then(setDrafts)
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    setDrafts([]);
+    if (userId) refreshDrafts();
+  }, [userId, refreshDrafts]);
+
+  /** Desa el projecte per continuar-lo més tard: només puja els trams nous. */
+  const saveDraft = async () => {
+    if (!user) {
+      setError(t("draftLogin"));
+      return;
+    }
+    const segments = segmentsRef.current;
+    if (segments.length === 0) return;
+    setDraftBusy(true);
+    setError(null);
+    try {
+      const existing = drafts.find((d) => d.id === draftId);
+      const { id } = await saveDraftFn({
+        data: {
+          id: draftId,
+          meta: {
+            title:
+              existing?.title ??
+              `${tpl?.nombre ?? t("draftDefaultName")} · ${new Date().toLocaleDateString(lang)}`,
+            template: template?.id ?? null,
+            seconds,
+            music: bgUsedRef.current,
+          },
+        },
+      });
+      setDraftId(id);
+      for (let i = savedSegmentsRef.current; i < segments.length; i++) {
+        await addDraftSegmentFn({
+          data: {
+            draftId: id,
+            position: i,
+            mime: segments[i]!.type || "audio/webm",
+            dataBase64: await blobToBase64(segments[i]!),
+          },
+        });
+        savedSegmentsRef.current = i + 1;
+      }
+      setDraftSaved(true);
+      refreshDrafts();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("draftSaveFailed"));
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+
+  const openDraft = async (draft: DraftRow) => {
+    if (status === "recording" || status === "paused") return;
+    setDraftBusy(true);
+    setError(null);
+    try {
+      const segments: Blob[] = [];
+      for (let i = 0; i < draft.segments; i++) {
+        const { mime, dataBase64 } = await fetchDraftSegmentFn({
+          data: { draftId: draft.id, position: i },
+        });
+        const bytes = Uint8Array.from(atob(dataBase64), (c) => c.charCodeAt(0));
+        segments.push(new Blob([bytes], { type: mime }));
+      }
+      segmentsRef.current = segments;
+      savedSegmentsRef.current = segments.length;
+      bgUsedRef.current = draft.music;
+      setDraftId(draft.id);
+      setTemplate(TEMPLATES.find((tp) => tp.id === draft.template) ?? null);
+      setSeconds(draft.seconds);
+      setEdited(null);
+      setAi(null);
+      setMp3Url(null);
+      setAudioUrl(null);
+      setDraftSaved(false);
+      await showSegments();
+      setStatus("done");
+    } catch {
+      setError(t("draftOpenFailed"));
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+
+  const removeDraft = async (draft: DraftRow) => {
+    if (!window.confirm(t("draftDeleteConfirm", { name: draft.title }))) return;
+    try {
+      await deleteDraftFn({ data: { id: draft.id } });
+      if (draftId === draft.id) {
+        setDraftId(null);
+        savedSegmentsRef.current = 0;
+      }
+      setDrafts((cur) => cur.filter((d) => d.id !== draft.id));
+    } catch {
+      setError(t("deleteFailed"));
     }
   };
 
@@ -631,6 +811,50 @@ function RadioStudio() {
         >
           {/* ---------- Columna 1: plantilla i guia ---------- */}
           <div className="min-h-0 space-y-3 lg:overflow-y-auto lg:pr-1">
+            {drafts.length > 0 && (
+              <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <FolderOpen className="size-4" /> {t("draftsTitle")}
+                </h2>
+                <ul className="mt-3 grid gap-2">
+                  {drafts.map((d) => (
+                    <li
+                      key={d.id}
+                      className={`flex items-center gap-2 rounded-xl border p-2.5 ${
+                        draftId === d.id
+                          ? "border-accent bg-accent/15"
+                          : "border-border bg-secondary/40"
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">
+                          {d.title}
+                        </span>
+                        <span className="block font-mono text-[11px] text-muted-foreground">
+                          {formatTime(d.seconds)}
+                        </span>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={draftBusy || isLive}
+                        onClick={() => void openDraft(d)}
+                      >
+                        {t("draftOpen")}
+                      </Button>
+                      <button
+                        onClick={() => void removeDraft(d)}
+                        aria-label={t("deleteSound", { name: d.title })}
+                        className="rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("step1Title")}
@@ -849,7 +1073,9 @@ function RadioStudio() {
               <div className="mt-4 flex flex-col items-center gap-2">
                 <button
                   onClick={
-                    status === "idle" || status === "done" ? start : togglePause
+                    status === "idle" || status === "done"
+                      ? requestStart
+                      : togglePause
                   }
                   aria-label={
                     status === "recording"
@@ -1230,6 +1456,40 @@ function RadioStudio() {
 
               {audioUrl && (
                 <div className="mt-3 space-y-3">
+                  <div className="rounded-xl border border-accent/40 bg-accent/10 p-3">
+                    <p className="text-sm font-semibold">
+                      {t("draftNotFinished")}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={isLive || draftBusy}
+                        onClick={() => void start(true)}
+                      >
+                        <Mic className="size-4" /> {t("draftContinue")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={draftBusy}
+                        onClick={() => void saveDraft()}
+                      >
+                        {draftBusy ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Save className="size-4" />
+                        )}
+                        {t("draftSave")}
+                      </Button>
+                    </div>
+                    {draftSaved && (
+                      <p className="mt-2 text-xs font-semibold text-accent">
+                        {t("draftSavedMsg")}
+                      </p>
+                    )}
+                  </div>
+
                   <div className="rounded-xl border border-border bg-secondary/40 p-3">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {t("originalRecording")}
@@ -1414,6 +1674,46 @@ function RadioStudio() {
           </div>
         </div>
       </div>
+      <Dialog open={prepOpen} onOpenChange={setPrepOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("prepTitle")}</DialogTitle>
+            <DialogDescription>{t("prepIntro")}</DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-2 text-sm">
+            <li className="flex gap-2">
+              <span>{tpl ? "✅" : "📝"}</span>
+              <span>
+                {tpl ? t("prepScriptOk", { name: tpl.nombre }) : t("prepScript")}
+              </span>
+            </li>
+            <li className="flex gap-2">
+              <span>{bgTrack ? "✅" : "🎵"}</span>
+              <span>{bgTrack ? t("prepMusicOk") : t("prepMusic")}</span>
+            </li>
+            <li className="flex gap-2">
+              <span>🔊</span>
+              <span>{t("prepEffects")}</span>
+            </li>
+          </ul>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={prepSkip}
+              onChange={(e) => setPrepSkip(e.target.checked)}
+            />
+            {t("prepDontShow")}
+          </label>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setPrepOpen(false)}>
+              {t("prepNotYet")}
+            </Button>
+            <Button onClick={confirmPrep}>
+              <Mic className="size-4" /> {t("prepGo")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

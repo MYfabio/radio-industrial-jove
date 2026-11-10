@@ -229,6 +229,116 @@ export const estudiMessages = defineMessages({
     es: "Inicia sesión para añadir nuevos.",
     en: "Sign in to add new ones.",
   },
+  draftsTitle: {
+    ca: "Els meus projectes",
+    es: "Mis proyectos",
+    en: "My projects",
+  },
+  draftOpen: {
+    ca: "Obre",
+    es: "Abrir",
+    en: "Open",
+  },
+  draftNotFinished: {
+    ca: "Encara no has acabat? Continua gravant o desa-ho per a un altre dia.",
+    es: "¿Aún no has acabado? Sigue grabando o guárdalo para otro día.",
+    en: "Not finished yet? Keep recording or save it for another day.",
+  },
+  draftContinue: {
+    ca: "Continua gravant",
+    es: "Seguir grabando",
+    en: "Keep recording",
+  },
+  draftSave: {
+    ca: "Desa per continuar més tard",
+    es: "Guardar para seguir más tarde",
+    en: "Save to continue later",
+  },
+  draftSavedMsg: {
+    ca: "Desat! El trobaràs a «Els meus projectes» quan tornis a entrar.",
+    es: "¡Guardado! Lo encontrarás en «Mis proyectos» cuando vuelvas a entrar.",
+    en: "Saved! You'll find it under “My projects” next time you sign in.",
+  },
+  draftDefaultName: {
+    ca: "Projecte",
+    es: "Proyecto",
+    en: "Project",
+  },
+  draftLogin: {
+    ca: "Inicia sessió per desar el projecte.",
+    es: "Inicia sesión para guardar el proyecto.",
+    en: "Sign in to save the project.",
+  },
+  draftSaveFailed: {
+    ca: "No s'ha pogut desar el projecte.",
+    es: "No se ha podido guardar el proyecto.",
+    en: "The project could not be saved.",
+  },
+  draftOpenFailed: {
+    ca: "No s'ha pogut obrir el projecte.",
+    es: "No se ha podido abrir el proyecto.",
+    en: "The project could not be opened.",
+  },
+  draftJoinFailed: {
+    ca: "No s'han pogut unir els trams de la gravació.",
+    es: "No se han podido unir los tramos de la grabación.",
+    en: "The recording parts could not be joined.",
+  },
+  draftDeleteConfirm: {
+    ca: "Vols esborrar el projecte «{name}»? No es pot desfer.",
+    es: "¿Quieres borrar el proyecto «{name}»? No se puede deshacer.",
+    en: "Delete the project “{name}”? This cannot be undone.",
+  },
+  prepTitle: {
+    ca: "Abans de gravar, prepara el teu pòdcast",
+    es: "Antes de grabar, prepara tu pódcast",
+    en: "Before recording, get your podcast ready",
+  },
+  prepIntro: {
+    ca: "Tingues a punt la música i els efectes: mentre graves només els hauràs de tocar.",
+    es: "Ten a punto la música y los efectos: mientras grabas solo tendrás que tocarlos.",
+    en: "Have your music and effects ready: while recording you only need to tap them.",
+  },
+  prepScript: {
+    ca: "Tria una plantilla per tenir el guió al davant.",
+    es: "Elige una plantilla para tener el guion delante.",
+    en: "Pick a template so the script is in front of you.",
+  },
+  prepScriptOk: {
+    ca: "Guió triat: {name}.",
+    es: "Guion elegido: {name}.",
+    en: "Script chosen: {name}.",
+  },
+  prepMusic: {
+    ca: "Tria la música de fons (o grava sense música).",
+    es: "Elige la música de fondo (o graba sin música).",
+    en: "Choose the background music (or record without it).",
+  },
+  prepMusicOk: {
+    ca: "La música de fons ja sona.",
+    es: "La música de fondo ya suena.",
+    en: "Background music is already playing.",
+  },
+  prepEffects: {
+    ca: "Prova els efectes de so i decideix quins faràs servir.",
+    es: "Prueba los efectos de sonido y decide cuáles vas a usar.",
+    en: "Try the sound effects and decide which ones you'll use.",
+  },
+  prepDontShow: {
+    ca: "No m'ho tornis a recordar",
+    es: "No me lo recuerdes más",
+    en: "Don't remind me again",
+  },
+  prepNotYet: {
+    ca: "Encara no, ho preparo",
+    es: "Todavía no, lo preparo",
+    en: "Not yet, let me prepare",
+  },
+  prepGo: {
+    ca: "Ja ho tinc, a gravar!",
+    es: "¡Lo tengo, a grabar!",
+    en: "Ready, let's record!",
+  },
   uploadKindEffect: {
     ca: "Efecte de so",
     es: "Efecto de sonido",

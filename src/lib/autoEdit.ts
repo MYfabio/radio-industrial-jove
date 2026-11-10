@@ -60,7 +60,7 @@ const NEIGHBOURS = 5;
 const MIN_ACTIVE = 3;
 const SILENT_DB = -100;
 
-function encodeWav(channel: Float32Array, sampleRate: number): Blob {
+export function encodeWav(channel: Float32Array, sampleRate: number): Blob {
   const bytesPerSample = 2;
   const buffer = new ArrayBuffer(44 + channel.length * bytesPerSample);
   const view = new DataView(buffer);
