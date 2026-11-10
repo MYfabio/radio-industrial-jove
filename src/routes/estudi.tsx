@@ -1792,12 +1792,14 @@ function RadioStudio() {
         <div
           role="status"
           aria-live="assertive"
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/90 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/50 p-4"
         >
+          {/* El fons és mig transparent perquè l'estudi (guió i sons) es vegi darrere;
+              el número porta un halo del color de fons perquè es llegeixi bé igualment. */}
           {countdown > 0 ? (
             <span
               key={countdown}
-              className="font-mono text-[12rem] font-black leading-none text-primary"
+              className="font-mono text-[12rem] font-black leading-none text-primary [text-shadow:0_0_0.5rem_var(--background),0_0_1.5rem_var(--background),0_0_3rem_var(--background)]"
             >
               {countdown}
             </span>
@@ -1806,7 +1808,7 @@ function RadioStudio() {
               {t("onAir")}
             </span>
           )}
-          <p className="text-sm font-semibold text-muted-foreground">
+          <p className="rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground">
             {t("countdownHint")}
           </p>
         </div>
