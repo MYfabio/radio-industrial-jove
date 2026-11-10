@@ -22,6 +22,7 @@ import {
   Palette,
   Save,
   FolderOpen,
+  ArrowLeft,
 } from "lucide-react";
 import { Waveform } from "@/components/Waveform";
 import { LevelMeter } from "@/components/LevelMeter";
@@ -267,6 +268,14 @@ function RadioStudio() {
   const [prepOpen, setPrepOpen] = useState(false);
   const [prepSkip, setPrepSkip] = useState(false);
 
+  // Compte enrere abans de gravar (3, 2, 1 i 0 = «En antena»), i vistes:
+  // gravant només es veuen el guió i els sons; en acabar, només el resultat.
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const startingRef = useRef(false);
+  const [resultView, setResultView] = useState(false);
+  const [micOpen, setMicOpen] = useState(false);
+  const [micAnalyser, setMicAnalyser] = useState<AnalyserNode | null>(null);
+
   useEffect(() => {
     if (status !== "recording") return;
     const id = window.setInterval(() => setSeconds((s) => s + 1), 1000);
@@ -447,8 +456,10 @@ function RadioStudio() {
     return startBackground(ctx, id, destinations, bgVolume);
   };
 
-  const toggleBackground = (id: string) => {
-    const next = bgTrack === id ? null : id;
+  const toggleBackground = (id: string) =>
+    playBackground(bgTrack === id ? null : id);
+
+  const playBackground = (next: string | null) => {
     setBgTrack(next);
     bgTrackRef.current = next;
     bgRef.current?.stop();
@@ -473,9 +484,44 @@ function RadioStudio() {
     bgRef.current = null;
   };
 
+  /**
+   * Un xiulet curt per la mateixa porta que els efectes, perquè arribi a tots
+   * els auriculars. No queda gravat: la gravació comença quan ha acabat.
+   */
+  const beep = (out: AudioNode, freq: number, dur: number) => {
+    const ctx = out.context;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.connect(gain).connect(out);
+    osc.start();
+    osc.stop(ctx.currentTime + dur);
+  };
+
+  const wait = (ms: number) =>
+    new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+  /** 3, 2, 1… i «En antena». La gravació comença quan s'acaba. */
+  const runCountdown = async (out: AudioNode) => {
+    for (const n of [3, 2, 1]) {
+      setCountdown(n);
+      beep(out, 660, 0.18);
+      await wait(1000);
+    }
+    setCountdown(0);
+    beep(out, 990, 0.45);
+    await wait(500);
+  };
+
   const start = async (append = false) => {
+    if (startingRef.current) return;
+    startingRef.current = true;
     setError(null);
     setDraftSaved(false);
+    setMicOpen(false);
+    setResultView(false);
     try {
       // Micros: el motor els obre amb el processament de videotrucada
       // desactivat per defecte (configurable), els passa a mono i els envia
@@ -484,6 +530,7 @@ function RadioStudio() {
       const engine = audio.ensureEngine();
       await audio.openMics();
       setAnalyser(engine.analyser);
+      await runCountdown(engine.fxIn);
       // La música de fons ja entra al bus d'emissió per fxIn: no cal reiniciar-la.
       const dest = engine.recordDest;
 
@@ -514,9 +561,33 @@ function RadioStudio() {
       setAi(null);
       setMp3Url(null);
       setStatus("recording");
+      window.setTimeout(() => setCountdown(null), 900);
     } catch {
+      setCountdown(null);
       setError(t("micAccessFailed"));
+    } finally {
+      startingRef.current = false;
     }
+  };
+
+  /** Prova de micros en una finestra a part: s'obre, es prova i es tanca. */
+  const openMicTest = async () => {
+    setMicOpen(true);
+    if (isLive || audio.testing) return;
+    await audio.toggleTest();
+    setMicAnalyser(audio.ensureEngine().analyser);
+  };
+
+  const closeMicTest = async () => {
+    setMicOpen(false);
+    setMicAnalyser(null);
+    if (isLive || !audio.testing) return;
+    // Aturar la prova tanca el motor d'àudio: la música es torna a posar.
+    const track = bgTrackRef.current;
+    bgRef.current?.stop();
+    bgRef.current = null;
+    await audio.toggleTest();
+    if (track) playBackground(track);
   };
 
   /** Abans d'una gravació nova, recorda preparar la música i els efectes. */
@@ -640,6 +711,7 @@ function RadioStudio() {
       setDraftSaved(false);
       await showSegments();
       setStatus("done");
+      setResultView(true);
     } catch {
       setError(t("draftOpenFailed"));
     } finally {
@@ -678,6 +750,7 @@ function RadioStudio() {
     recorderRef.current = null;
     cleanup();
     setStatus("done");
+    setResultView(true);
     // Celebrem el moment: portem la vista al resultat i el ressaltem un instant.
     setJustFinished(true);
     window.setTimeout(() => {
@@ -750,6 +823,9 @@ function RadioStudio() {
   };
 
   const isLive = status === "recording" || status === "paused";
+  /** Gravant (o en pausa, o al compte enrere): només el guió i els sons. */
+  const recView = isLive || countdown !== null;
+  const focusHidden = recView ? "hidden" : "";
 
   return (
     <main className="studio-bg min-h-screen px-3 py-3 lg:h-screen lg:overflow-hidden">
@@ -801,7 +877,15 @@ function RadioStudio() {
         </header>
 
         <div
-          className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2 xl:grid-cols-[var(--col1)_6px_minmax(0,1fr)_6px_var(--col3)]"
+          className={`grid min-h-0 flex-1 gap-3 ${
+            recView
+              ? tpl
+                ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+                : "grid-cols-1"
+              : resultView
+                ? "grid-cols-1"
+                : "lg:grid-cols-2 xl:grid-cols-[var(--col1)_6px_minmax(0,1fr)_6px_var(--col3)]"
+          }`}
           style={
             {
               "--col1": `${col1Width}px`,
@@ -810,8 +894,12 @@ function RadioStudio() {
           }
         >
           {/* ---------- Columna 1: plantilla i guia ---------- */}
-          <div className="min-h-0 space-y-3 lg:overflow-y-auto lg:pr-1">
-            {drafts.length > 0 && (
+          <div
+            className={`min-h-0 space-y-3 lg:overflow-y-auto lg:pr-1 ${
+              resultView || (recView && !tpl) ? "hidden" : ""
+            }`}
+          >
+            {drafts.length > 0 && !recView && (
               <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                 <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   <FolderOpen className="size-4" /> {t("draftsTitle")}
@@ -855,7 +943,9 @@ function RadioStudio() {
               </section>
             )}
 
-            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <section
+              className={`rounded-2xl border border-border bg-card p-4 shadow-sm ${focusHidden}`}
+            >
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("step1Title")}
               </h2>
@@ -924,7 +1014,9 @@ function RadioStudio() {
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {t("introHeading")}
                   </p>
-                  <p className="mt-1 text-sm">{tpl.intro}</p>
+                  <p className={`mt-1 ${recView ? "text-lg" : "text-sm"}`}>
+                    {tpl.intro}
+                  </p>
                 </div>
 
                 <ol className="space-y-2">
@@ -937,7 +1029,9 @@ function RadioStudio() {
                     return (
                       <li
                         key={paso.titulo}
-                        className={`flex gap-2 rounded-xl border p-2.5 text-sm ${
+                        className={`flex gap-2 rounded-xl border p-2.5 ${
+                          recView ? "text-lg" : "text-sm"
+                        } ${
                           activo
                             ? "border-accent bg-accent/20"
                             : "border-border/60 bg-card/60"
@@ -963,7 +1057,9 @@ function RadioStudio() {
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {t("outroHeading")}
                   </p>
-                  <p className="mt-1 text-sm">{tpl.outro}</p>
+                  <p className={`mt-1 ${recView ? "text-lg" : "text-sm"}`}>
+                    {tpl.outro}
+                  </p>
                 </div>
 
                 <div>
@@ -990,7 +1086,9 @@ function RadioStudio() {
               </section>
             )}
 
-            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <section
+              className={`rounded-2xl border border-border bg-card p-4 shadow-sm ${focusHidden}`}
+            >
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("resources")}
               </h2>
@@ -1027,13 +1125,19 @@ function RadioStudio() {
             aria-label={t("resizeCol1")}
             onPointerDown={startDrag("left", col1Width)}
             onDoubleClick={() => setCol1Width(COL1_DEFAULT)}
-            className="col-resize-handle hidden xl:flex"
+            className={`col-resize-handle hidden ${
+              recView || resultView ? "" : "xl:flex"
+            }`}
           >
             <span />
           </div>
 
           {/* ---------- Columna 2: pista i botó de gravació ---------- */}
-          <div className="min-h-0 space-y-3 lg:overflow-y-auto lg:pr-1">
+          <div
+            className={`min-h-0 space-y-3 lg:overflow-y-auto lg:pr-1 ${
+              resultView ? "hidden" : ""
+            }`}
+          >
             <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1122,7 +1226,14 @@ function RadioStudio() {
               </div>
             </section>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => void openMicTest()}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground hover:bg-secondary"
+              >
+                <Mic className="size-3.5" /> {t("micTestOpen")}
+              </button>
               <button
                 type="button"
                 onClick={() => setShowAdvanced((v) => !v)}
@@ -1133,11 +1244,7 @@ function RadioStudio() {
               </button>
             </div>
 
-            <section
-              className={
-                showAdvanced ? "grid gap-3 sm:grid-cols-2" : "grid gap-3"
-              }
-            >
+            <section className="grid gap-3">
               <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                 <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <Music className="size-4" /> {t("bgMusic")}
@@ -1221,22 +1328,6 @@ function RadioStudio() {
                   </label>
                 )}
               </div>
-
-              {showAdvanced && (
-                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                  <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <Users className="size-4" /> {t("collabMode")}
-                  </p>
-                  <div className="mt-2">
-                    <StudioMixer
-                      audio={audio}
-                      multi={duo}
-                      onMultiChange={setDuo}
-                      recording={status === "recording" || status === "paused"}
-                    />
-                  </div>
-                </div>
-              )}
             </section>
 
             <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -1279,7 +1370,11 @@ function RadioStudio() {
                 </div>
               )}
 
-              <div className="mt-3 grid grid-cols-5 gap-2">
+              <div
+                className={`mt-3 grid gap-2 ${
+                  recView ? "grid-cols-3 sm:grid-cols-4" : "grid-cols-5"
+                }`}
+              >
                 {EFFECTS.map((fx) => (
                   <button
                     key={fx.id}
@@ -1382,7 +1477,11 @@ function RadioStudio() {
                 )}
 
                 {sounds.filter((s) => s.kind === "efecte").length > 0 && (
-                  <div className="mt-3 grid grid-cols-5 gap-2">
+                  <div
+                    className={`mt-3 grid gap-2 ${
+                      recView ? "grid-cols-3 sm:grid-cols-4" : "grid-cols-5"
+                    }`}
+                  >
                     {sounds
                       .filter((s) => s.kind === "efecte")
                       .map((s) => (
@@ -1424,13 +1523,28 @@ function RadioStudio() {
             aria-label={t("resizeCol3")}
             onPointerDown={startDrag("right", col3Width)}
             onDoubleClick={() => setCol3Width(COL3_DEFAULT)}
-            className="col-resize-handle hidden xl:flex"
+            className={`col-resize-handle hidden ${
+              recView || resultView ? "" : "xl:flex"
+            }`}
           >
             <span />
           </div>
 
           {/* ---------- Columna 3: edició, escolta i publicació ---------- */}
-          <div className="min-h-0 space-y-3 lg:col-span-2 lg:overflow-y-auto lg:pr-1 xl:col-span-1">
+          <div
+            className={`min-h-0 space-y-3 lg:overflow-y-auto lg:pr-1 ${
+              recView
+                ? "hidden"
+                : resultView
+                  ? "mx-auto w-full max-w-3xl"
+                  : "lg:col-span-2 xl:col-span-1"
+            }`}
+          >
+            {resultView && (
+              <Button variant="secondary" onClick={() => setResultView(false)}>
+                <ArrowLeft className="size-4" /> {t("backToStudio")}
+              </Button>
+            )}
             <section
               ref={resultRef}
               className={`rounded-2xl border bg-card p-4 shadow-sm transition-all duration-500 ${
@@ -1674,6 +1788,68 @@ function RadioStudio() {
           </div>
         </div>
       </div>
+      {countdown !== null && (
+        <div
+          role="status"
+          aria-live="assertive"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/90 backdrop-blur-sm"
+        >
+          {countdown > 0 ? (
+            <span
+              key={countdown}
+              className="font-mono text-[12rem] font-black leading-none text-primary"
+            >
+              {countdown}
+            </span>
+          ) : (
+            <span className="rec-pulse rounded-3xl bg-primary px-10 py-6 text-center text-5xl font-black uppercase tracking-wider text-primary-foreground sm:text-7xl">
+              {t("onAir")}
+            </span>
+          )}
+          <p className="text-sm font-semibold text-muted-foreground">
+            {t("countdownHint")}
+          </p>
+        </div>
+      )}
+
+      <Dialog
+        open={micOpen}
+        onOpenChange={(open) => {
+          if (!open) void closeMicTest();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="size-5" /> {t("micTestTitle")}
+            </DialogTitle>
+            <DialogDescription>{t("micTestIntro")}</DialogDescription>
+          </DialogHeader>
+          {!isLive && (
+            <div>
+              <Waveform
+                analyser={micAnalyser}
+                recording={audio.testing}
+                paused={false}
+                className="h-24"
+              />
+              <LevelMeter analyser={micAnalyser} active={audio.testing} />
+            </div>
+          )}
+          <StudioMixer
+            audio={audio}
+            multi={duo}
+            onMultiChange={setDuo}
+            recording={isLive}
+          />
+          <DialogFooter>
+            <Button onClick={() => void closeMicTest()}>
+              {t("micTestClose")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={prepOpen} onOpenChange={setPrepOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1684,7 +1860,9 @@ function RadioStudio() {
             <li className="flex gap-2">
               <span>{tpl ? "✅" : "📝"}</span>
               <span>
-                {tpl ? t("prepScriptOk", { name: tpl.nombre }) : t("prepScript")}
+                {tpl
+                  ? t("prepScriptOk", { name: tpl.nombre })
+                  : t("prepScript")}
               </span>
             </li>
             <li className="flex gap-2">

@@ -339,6 +339,41 @@ export const estudiMessages = defineMessages({
     es: "¡Lo tengo, a grabar!",
     en: "Ready, let's record!",
   },
+  onAir: {
+    ca: "En antena!",
+    es: "¡En el aire!",
+    en: "On air!",
+  },
+  countdownHint: {
+    ca: "Prepara't: la gravació comença de seguida.",
+    es: "Prepárate: la grabación empieza enseguida.",
+    en: "Get ready: recording starts in a moment.",
+  },
+  backToStudio: {
+    ca: "Torna a l'estudi",
+    es: "Volver al estudio",
+    en: "Back to the studio",
+  },
+  micTestOpen: {
+    ca: "Prova els micros",
+    es: "Probar micros",
+    en: "Test microphones",
+  },
+  micTestTitle: {
+    ca: "Prova de micros",
+    es: "Prueba de micros",
+    en: "Microphone test",
+  },
+  micTestIntro: {
+    ca: "Parla i mira si l'ona es mou. Quan vagi bé, tanca aquesta finestra.",
+    es: "Habla y mira si la onda se mueve. Cuando vaya bien, cierra esta ventana.",
+    en: "Speak and check that the wave moves. When it works, close this window.",
+  },
+  micTestClose: {
+    ca: "Funciona, tanca",
+    es: "Funciona, cerrar",
+    en: "It works, close",
+  },
   uploadKindEffect: {
     ca: "Efecte de so",
     es: "Efecto de sonido",
