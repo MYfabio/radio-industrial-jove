@@ -67,9 +67,9 @@ export const espaiMessages = defineMessages({
   },
   title: { ca: "El meu espai", es: "Mi espacio", en: "My space" },
   subtitle: {
-    ca: "Els teus pòdcasts i els que t'agraden.",
-    es: "Tus pódcasts y los que te gustan.",
-    en: "Your podcasts and the ones you like.",
+    ca: "Els teus pòdcasts, projectes i sons, i els pòdcasts que t'agraden.",
+    es: "Tus pódcasts, proyectos y sonidos, y los pódcasts que te gustan.",
+    en: "Your podcasts, projects and sounds, and the podcasts you like.",
   },
   goToStudio: {
     ca: "Anar a l'estudi",
@@ -98,5 +98,44 @@ export const espaiMessages = defineMessages({
     ca: "Encara no has marcat cap pòdcast com a preferit. Fes-ho des del mur!",
     es: "Aún no has marcado ningún pódcast como favorito. ¡Hazlo desde el muro!",
     en: "You haven't marked any podcast as a favourite yet. Do it from the wall!",
+  },
+
+  // Projectes a mig fer (els mateixos que surten a l'estudi)
+  tabDrafts: { ca: "Els meus projectes", es: "Mis proyectos", en: "My projects" },
+  emptyDrafts: {
+    ca: "No tens cap projecte a mig fer. Quan en desis un a l'estudi, el trobaràs aquí.",
+    es: "No tienes ningún proyecto a medias. Cuando guardes uno en el estudio, lo encontrarás aquí.",
+    en: "You have no unfinished projects. When you save one in the studio, you'll find it here.",
+  },
+  draftSaved: {
+    ca: "Desat el {date}",
+    es: "Guardado el {date}",
+    en: "Saved on {date}",
+  },
+  continueInStudio: {
+    ca: "Continua'l a l'estudi",
+    es: "Continuar en el estudio",
+    en: "Continue in the studio",
+  },
+
+  // Sons propis (la galeria personal de l'estudi)
+  tabSounds: { ca: "Els meus sons", es: "Mis sonidos", en: "My sounds" },
+  emptySounds: {
+    ca: "Encara no has pujat cap so. Puja'n des de l'estudi i els trobaràs aquí.",
+    es: "Aún no has subido ningún sonido. Súbelos desde el estudio y los encontrarás aquí.",
+    en: "You haven't uploaded any sounds yet. Upload them from the studio and you'll find them here.",
+  },
+  soundsHint: {
+    ca: "Els sons nous es pugen des de l'estudi.",
+    es: "Los sonidos nuevos se suben desde el estudio.",
+    en: "New sounds are uploaded from the studio.",
+  },
+  kindEffect: { ca: "Efecte", es: "Efecto", en: "Effect" },
+  kindMusic: { ca: "Música", es: "Música", en: "Music" },
+  listen: { ca: "Escolta", es: "Escuchar", en: "Listen" },
+  playFailed: {
+    ca: "No s'ha pogut carregar el so.",
+    es: "No se ha podido cargar el sonido.",
+    en: "Could not load the sound.",
   },
 });

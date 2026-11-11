@@ -5,6 +5,8 @@ import { levelMeterMessages as m } from "@/lib/i18n/messages/levelMeter";
 interface Props {
   analyser: AnalyserNode | null;
   active: boolean;
+  /** Versió baixa, sense l'escala de sota (mentre es grava). */
+  compact?: boolean;
 }
 
 type Level = "silenci" | "baix" | "be" | "alt";
@@ -17,7 +19,7 @@ const COPY: Record<Level, { key: keyof typeof m; className: string }> = {
 };
 
 /** Mesurador de veu en directe: avisa l'alumne si parla massa fluix o massa fort. */
-export function LevelMeter({ analyser, active }: Props) {
+export function LevelMeter({ analyser, active, compact = false }: Props) {
   const t = useT(m);
   const [rms, setRms] = useState(0);
   const [peak, setPeak] = useState(0);
@@ -58,7 +60,11 @@ export function LevelMeter({ analyser, active }: Props) {
   const copy = COPY[level];
 
   return (
-    <div className="mt-4 rounded-2xl border border-border bg-secondary/30 p-3">
+    <div
+      className={`rounded-2xl border border-border bg-secondary/30 ${
+        compact ? "mt-2 px-3 py-2" : "mt-4 p-3"
+      }`}
+    >
       <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <span>{t("voiceLevel")}</span>
         <span className={copy.className}>{t(copy.key)}</span>
@@ -73,7 +79,11 @@ export function LevelMeter({ analyser, active }: Props) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+      <div
+        className={`mt-1 justify-between text-[10px] uppercase tracking-wider text-muted-foreground ${
+          compact ? "hidden" : "flex"
+        }`}
+      >
         <span>{t("scaleQuiet")}</span>
         <span>{t("scaleGood")}</span>
         <span>{t("scaleLoud")}</span>

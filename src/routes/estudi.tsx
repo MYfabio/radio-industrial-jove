@@ -826,6 +826,9 @@ function RadioStudio() {
   /** Gravant (o en pausa, o al compte enrere): només el guió i els sons. */
   const recView = isLive || countdown !== null;
   const focusHidden = recView ? "hidden" : "";
+  // Gravant, tot ha de cabre en una pantalla: targetes compactes i xips grans.
+  const card = recView ? "p-3" : "p-4";
+  const chip = recView ? "px-4 py-2 text-sm" : "px-2.5 py-1 text-xs";
 
   return (
     <main className="studio-bg min-h-screen px-3 py-3 lg:h-screen lg:overflow-hidden">
@@ -1112,6 +1115,19 @@ function RadioStudio() {
                   <Music className="size-4 text-accent" /> {t("freesoundLink")}
                   <ExternalLink className="ml-auto size-3.5 text-muted-foreground" />
                 </a>
+                <a
+                  href={
+                    lang === "en"
+                      ? "https://pixabay.com/sound-effects/"
+                      : "https://pixabay.com/es/sound-effects/"
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 p-2.5 text-sm font-semibold transition-transform hover:scale-[1.01] active:scale-95"
+                >
+                  <FileAudio className="size-4 text-accent" /> {t("pixabayLink")}
+                  <ExternalLink className="ml-auto size-3.5 text-muted-foreground" />
+                </a>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
                 {t("freesoundHint")}
@@ -1134,11 +1150,13 @@ function RadioStudio() {
 
           {/* ---------- Columna 2: pista i botó de gravació ---------- */}
           <div
-            className={`min-h-0 space-y-3 lg:overflow-y-auto lg:pr-1 ${
-              resultView ? "hidden" : ""
-            }`}
+            className={`min-h-0 lg:overflow-y-auto lg:pr-1 ${
+              recView ? "space-y-2" : "space-y-3"
+            } ${resultView ? "hidden" : ""}`}
           >
-            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <section
+              className={`rounded-2xl border border-border bg-card shadow-sm ${card}`}
+            >
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("step2Title")}
@@ -1169,12 +1187,22 @@ function RadioStudio() {
                 analyser={analyser}
                 recording={isLive}
                 paused={status === "paused"}
-                className="h-24 xl:h-28"
+                className={recView ? "h-12" : "h-24 xl:h-28"}
               />
 
-              <LevelMeter analyser={analyser} active={isLive} />
+              <LevelMeter
+                analyser={analyser}
+                active={isLive}
+                compact={recView}
+              />
 
-              <div className="mt-4 flex flex-col items-center gap-2">
+              <div
+                className={`flex items-center ${
+                  recView
+                    ? "mt-2 flex-row flex-wrap justify-center gap-4"
+                    : "mt-4 flex-col gap-2"
+                }`}
+              >
                 <button
                   onClick={
                     status === "idle" || status === "done"
@@ -1188,9 +1216,9 @@ function RadioStudio() {
                         ? t("resumeRecording")
                         : t("startRecording")
                   }
-                  className={`flex size-24 flex-col items-center justify-center gap-1 rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95 xl:size-28 ${
-                    status === "recording" ? "rec-pulse" : ""
-                  }`}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 active:scale-95 ${
+                    recView ? "size-20" : "size-24 xl:size-28"
+                  } ${status === "recording" ? "rec-pulse" : ""}`}
                 >
                   {status === "recording" ? (
                     <Pause className="size-10" />
@@ -1208,12 +1236,14 @@ function RadioStudio() {
                   </span>
                 </button>
 
-                <p className="text-center text-xs text-muted-foreground">
-                  {t("recordHint")}
-                </p>
+                {!recView && (
+                  <p className="text-center text-xs text-muted-foreground">
+                    {t("recordHint")}
+                  </p>
+                )}
 
                 {isLive && (
-                  <Button variant="secondary" onClick={stop}>
+                  <Button variant="secondary" size="lg" onClick={stop}>
                     <Square className="size-4" /> {t("finishRecording")}
                   </Button>
                 )}
@@ -1245,7 +1275,9 @@ function RadioStudio() {
             </div>
 
             <section className="grid gap-3">
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div
+                className={`rounded-2xl border border-border bg-card shadow-sm ${card}`}
+              >
                 <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <Music className="size-4" /> {t("bgMusic")}
                 </p>
@@ -1256,7 +1288,7 @@ function RadioStudio() {
                       onClick={() => toggleBackground(bg.id)}
                       aria-pressed={bgTrack === bg.id}
                       title={bgDesc(bg)}
-                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-transform hover:scale-105 active:scale-95 ${
+                      className={`flex items-center gap-1.5 rounded-full border font-semibold transition-transform hover:scale-105 active:scale-95 ${chip} ${
                         bgTrack === bg.id
                           ? "border-accent bg-accent/20 text-accent"
                           : "border-border bg-secondary/40"
@@ -1276,7 +1308,7 @@ function RadioStudio() {
                             onClick={() => toggleBackground(id)}
                             aria-pressed={bgTrack === id}
                             title={s.name}
-                            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-transform hover:scale-105 active:scale-95 ${
+                            className={`flex items-center gap-1.5 rounded-full border font-semibold transition-transform hover:scale-105 active:scale-95 ${chip} ${
                               bgTrack === id
                                 ? "border-accent bg-accent/20 text-accent"
                                 : "border-border bg-secondary/40"
@@ -1303,13 +1335,13 @@ function RadioStudio() {
                   {bgTrack && (
                     <button
                       onClick={stopBackground}
-                      className="flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive-foreground transition-transform hover:scale-105 active:scale-95"
+                      className={`flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 font-semibold text-destructive-foreground transition-transform hover:scale-105 active:scale-95 ${chip}`}
                     >
                       <Square className="size-3.5" /> {t("stop")}
                     </button>
                   )}
                 </div>
-                {showAdvanced && (
+                {(showAdvanced || recView) && (
                   <label className="mt-2 block text-xs text-muted-foreground">
                     {t("bgVolume")}
                     <input
@@ -1330,13 +1362,17 @@ function RadioStudio() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <section
+              className={`rounded-2xl border border-border bg-card shadow-sm ${card}`}
+            >
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("step3Title")}
               </h2>
 
-              {showAdvanced && (
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {(showAdvanced || recView) && (
+                <div
+                  className={`grid gap-3 sm:grid-cols-2 ${recView ? "mt-2" : "mt-3"}`}
+                >
                   <label className="block text-xs text-muted-foreground">
                     {t("fxVolume")}
                     <span className="ml-1 font-semibold text-foreground">
@@ -1372,7 +1408,7 @@ function RadioStudio() {
 
               <div
                 className={`mt-3 grid gap-2 ${
-                  recView ? "grid-cols-3 sm:grid-cols-4" : "grid-cols-5"
+                  recView ? "grid-cols-4 md:grid-cols-7" : "grid-cols-5"
                 }`}
               >
                 {EFFECTS.map((fx) => (
@@ -1394,8 +1430,18 @@ function RadioStudio() {
                 ))}
               </div>
 
-              <div className="mt-4 border-t border-border pt-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <div
+                className={
+                  recView && !showAdvanced
+                    ? "mt-2"
+                    : "mt-4 border-t border-border pt-3"
+                }
+              >
+                <div
+                  className={`flex-wrap items-center justify-between gap-2 ${
+                    recView && !showAdvanced ? "hidden" : "flex"
+                  }`}
+                >
                   <h3 className="text-sm font-semibold">{t("classSounds")}</h3>
                   {showAdvanced && (
                     <Button
@@ -1415,7 +1461,11 @@ function RadioStudio() {
                     onChange={(e) => void handleUpload(e.target.files)}
                   />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p
+                  className={`mt-1 text-xs text-muted-foreground ${
+                    recView && !showAdvanced ? "hidden" : ""
+                  }`}
+                >
                   {t("galleryShared")}
                   {!user && ` ${t("galleryLoginHint")}`}
                 </p>
@@ -1479,7 +1529,7 @@ function RadioStudio() {
                 {sounds.filter((s) => s.kind === "efecte").length > 0 && (
                   <div
                     className={`mt-3 grid gap-2 ${
-                      recView ? "grid-cols-3 sm:grid-cols-4" : "grid-cols-5"
+                      recView ? "grid-cols-4 md:grid-cols-7" : "grid-cols-5"
                     }`}
                   >
                     {sounds

@@ -83,10 +83,15 @@ export const estudiMessages = defineMessages({
     es: "Busca sonidos y efectos (Freesound)",
     en: "Find sounds and effects (Freesound)",
   },
+  pixabayLink: {
+    ca: "Descarrega efectes de so (Pixabay)",
+    es: "Descarga efectos de sonido (Pixabay)",
+    en: "Download sound effects (Pixabay)",
+  },
   freesoundHint: {
-    ca: "A Freesound tria sons amb llicència CC0 (domini públic) o comprova que la llicència permeti el teu ús, i que el so sigui adequat per a classe.",
-    es: "En Freesound elige sonidos con licencia CC0 (dominio público) o comprueba que la licencia permita tu uso, y que el sonido sea adecuado para clase.",
-    en: "On Freesound, pick sounds with a CC0 (public domain) licence or check that the licence allows your use, and that the sound is suitable for class.",
+    ca: "A Freesound tria sons amb llicència CC0 (domini públic) o comprova que la llicència permeti el teu ús. Els efectes de Pixabay són gratuïts i no cal citar l'autor. Comprova sempre que el so sigui adequat per a classe.",
+    es: "En Freesound elige sonidos con licencia CC0 (dominio público) o comprueba que la licencia permita tu uso. Los efectos de Pixabay son gratuitos y no hace falta citar al autor. Comprueba siempre que el sonido sea adecuado para clase.",
+    en: "On Freesound, pick sounds with a CC0 (public domain) licence or check that the licence allows your use. Pixabay sound effects are free and need no attribution. Always check that the sound is suitable for class.",
   },
   resizeCol1: {
     ca: "Canvia l'amplada de la primera columna",

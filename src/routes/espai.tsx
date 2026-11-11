@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
-import { User, Loader2, Pencil, Trash2, Check, X, Heart, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { User, Loader2, Pencil, Trash2, Check, X, Heart, Clock, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,10 @@ import { AuthButton } from "@/components/AuthButton";
 import { useAuth } from "@/lib/auth";
 import { fetchMyPodcasts, updatePodcastFn, deletePodcastFn, type PodcastRow } from "@/lib/podcasts.functions";
 import { fetchMyFavoritePodcasts, toggleFavoriteFn } from "@/lib/favorites.functions";
+import { fetchDraftsFn, deleteDraftFn } from "@/lib/drafts.functions";
+import type { DraftRow } from "@/lib/drafts.server";
+import { fetchSounds, fetchSoundDataFn, deleteSoundFn } from "@/lib/sounds.functions";
+import type { SoundRow } from "@/lib/sounds.server";
 import { SITE_NAME } from "@/lib/siteConfig";
 import { langFromMatches, localeOf, tr, useLang, useT } from "@/lib/i18n";
 import { espaiMessages as m } from "@/lib/i18n/messages/espai";
@@ -214,12 +218,148 @@ function FavoriteCard({ p, onRemoved }: { p: PodcastRow; onRemoved: () => void }
   );
 }
 
+/** «Esborra» amb confirmació, com a la targeta d'un pòdcast. */
+function DeleteButton({ onDelete }: { onDelete: () => Promise<unknown> }) {
+  const t = useT(m);
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const doDelete = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onDelete();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("deleteFailed"));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      {confirm ? (
+        <>
+          <span className="text-sm text-muted-foreground">{t("confirmQuestion")}</span>
+          <Button size="sm" variant="destructive" onClick={() => void doDelete()} disabled={busy}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} {t("confirmDelete")}
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => setConfirm(false)} disabled={busy}>
+            {t("cancel")}
+          </Button>
+        </>
+      ) : (
+        <Button size="sm" variant="destructive" onClick={() => setConfirm(true)}>
+          <Trash2 className="size-4" /> {t("delete")}
+        </Button>
+      )}
+      {error && <span className="text-sm text-destructive-foreground">{error}</span>}
+    </>
+  );
+}
+
+function DraftCard({ d, onChanged }: { d: DraftRow; onChanged: () => void }) {
+  const del = useServerFn(deleteDraftFn);
+  const t = useT(m);
+  const { lang } = useLang();
+
+  return (
+    <article className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="flex size-14 items-center justify-center rounded-xl bg-primary/15 text-2xl" aria-hidden="true">
+          📁
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold">{d.title}</h3>
+          <p className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+            <Clock className="size-3.5" /> {formatTime(d.seconds)} ·{" "}
+            {t("draftSaved", { date: new Date(d.updated_at).toLocaleDateString(localeOf(lang)) })}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button size="sm" asChild>
+          <Link to="/estudi">{t("continueInStudio")}</Link>
+        </Button>
+        <DeleteButton
+          onDelete={async () => {
+            await del({ data: { id: d.id } });
+            onChanged();
+          }}
+        />
+      </div>
+    </article>
+  );
+}
+
+function SoundCard({ s, onChanged }: { s: SoundRow; onChanged: () => void }) {
+  const del = useServerFn(deleteSoundFn);
+  const fetchData = useServerFn(fetchSoundDataFn);
+  const t = useT(m);
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!url) return;
+    return () => URL.revokeObjectURL(url);
+  }, [url]);
+
+  // L'àudio no es baixa fins que es demana: la llista pot tenir molts sons.
+  const listen = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { dataBase64 } = await fetchData({ data: { id: s.id } });
+      const bytes = Uint8Array.from(atob(dataBase64), (c) => c.charCodeAt(0));
+      setUrl(URL.createObjectURL(new Blob([bytes], { type: s.mime })));
+    } catch {
+      setError(t("playFailed"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <article className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="flex size-14 items-center justify-center rounded-xl bg-primary/15 text-2xl" aria-hidden="true">
+          {s.emoji}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold">{s.name}</h3>
+          <p className="text-sm text-muted-foreground">
+            {t(s.kind === "musica" ? "kindMusic" : "kindEffect")}
+          </p>
+        </div>
+      </div>
+      {url && <audio controls autoPlay src={url} className="mt-3 w-full" />}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {!url && (
+          <Button size="sm" variant="secondary" onClick={() => void listen()} disabled={loading}>
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />} {t("listen")}
+          </Button>
+        )}
+        <DeleteButton
+          onDelete={async () => {
+            await del({ data: { id: s.id } });
+            onChanged();
+          }}
+        />
+        {error && <span className="text-sm text-destructive-foreground">{error}</span>}
+      </div>
+    </article>
+  );
+}
+
 function MySpace() {
   const { user, loading: authLoading } = useAuth();
   const t = useT(m);
   const qc = useQueryClient();
   const listMine = useServerFn(fetchMyPodcasts);
   const listFav = useServerFn(fetchMyFavoritePodcasts);
+  const listDrafts = useServerFn(fetchDraftsFn);
+  const listSounds = useServerFn(fetchSounds);
 
   const { data: mine, isLoading: loadingMine } = useQuery({
     queryKey: ["espai", "podcasts"],
@@ -232,8 +372,23 @@ function MySpace() {
     enabled: !!user,
   });
 
+  // Les claus porten l'usuari: en un ordinador compartit no han de quedar a la vista
+  // els projectes ni els sons de qui hi havia abans.
+  const { data: drafts, isLoading: loadingDrafts } = useQuery({
+    queryKey: ["espai", "drafts", user?.id],
+    queryFn: () => listDrafts({}),
+    enabled: !!user,
+  });
+  const { data: sounds, isLoading: loadingSounds } = useQuery({
+    queryKey: ["espai", "sounds", user?.id],
+    queryFn: () => listSounds({}),
+    enabled: !!user,
+  });
+
   const refreshMine = () => void qc.invalidateQueries({ queryKey: ["espai", "podcasts"] });
   const refreshFav = () => void qc.invalidateQueries({ queryKey: ["espai", "favorites"] });
+  const refreshDrafts = () => void qc.invalidateQueries({ queryKey: ["espai", "drafts"] });
+  const refreshSounds = () => void qc.invalidateQueries({ queryKey: ["espai", "sounds"] });
 
   if (authLoading) {
     return (
@@ -277,8 +432,10 @@ function MySpace() {
         </header>
 
         <Tabs defaultValue="mine">
-          <TabsList>
+          <TabsList className="h-auto flex-wrap justify-start">
             <TabsTrigger value="mine">{t("tabMine")}</TabsTrigger>
+            <TabsTrigger value="drafts">{t("tabDrafts")}</TabsTrigger>
+            <TabsTrigger value="sounds">{t("tabSounds")}</TabsTrigger>
             <TabsTrigger value="favorites">{t("tabFavorites")}</TabsTrigger>
           </TabsList>
 
@@ -305,6 +462,41 @@ function MySpace() {
             )}
             {mine?.map((p) => (
               <MyPodcastCard key={p.id} p={p} onChanged={refreshMine} />
+            ))}
+          </TabsContent>
+
+          <TabsContent value="drafts" className="mt-4 space-y-4">
+            {loadingDrafts && (
+              <p className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> {t("loading")}
+              </p>
+            )}
+            {!loadingDrafts && (drafts?.length ?? 0) === 0 && (
+              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-muted-foreground">
+                {t("emptyDrafts")}
+              </p>
+            )}
+            {drafts?.map((d) => (
+              <DraftCard key={d.id} d={d} onChanged={refreshDrafts} />
+            ))}
+          </TabsContent>
+
+          <TabsContent value="sounds" className="mt-4 space-y-4">
+            {loadingSounds && (
+              <p className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> {t("loading")}
+              </p>
+            )}
+            {!loadingSounds && (sounds?.length ?? 0) === 0 && (
+              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-muted-foreground">
+                {t("emptySounds")}
+              </p>
+            )}
+            {(sounds?.length ?? 0) > 0 && (
+              <p className="text-sm text-muted-foreground">{t("soundsHint")}</p>
+            )}
+            {sounds?.map((s) => (
+              <SoundCard key={s.id} s={s} onChanged={refreshSounds} />
             ))}
           </TabsContent>
 
