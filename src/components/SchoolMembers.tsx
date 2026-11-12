@@ -20,6 +20,7 @@ import {
   Clock,
   Search,
   X,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import {
   assignRoleFn,
   setMemberRoleFn,
   removeMemberFn,
+  deleteUserFn,
   deleteInviteFn,
   importMembersFn,
   type SchoolPeople,
@@ -115,7 +117,10 @@ export function SchoolMembersManager({
   const assignRole = useServerFn(assignRoleFn);
   const setRole = useServerFn(setMemberRoleFn);
   const removeMember = useServerFn(removeMemberFn);
+  const deleteUser = useServerFn(deleteUserFn);
   const deleteInvite = useServerFn(deleteInviteFn);
+  // Només el panell del super admin passa schoolId: esborrar del tot és cosa seva.
+  const canDeleteUsers = schoolId !== undefined;
   const deleteClass = useServerFn(deleteClassFn);
   const scope = schoolId !== undefined ? { schoolId } : {};
 
@@ -187,6 +192,39 @@ export function SchoolMembersManager({
     setRowError(null);
     try {
       await removeMember({ data: { authUserId, ...scope } });
+      await refresh();
+    } catch (e) {
+      setRowError(e instanceof Error ? e.message : t("unknownError"));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Esborrar del tot (només super admin)
+  const [toDelete, setToDelete] = useState<{
+    authUserId: string;
+    email: string;
+  } | null>(null);
+  const [rowNotice, setRowNotice] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    const { authUserId, email: who } = toDelete;
+    setToDelete(null);
+    setBusyId(authUserId);
+    setRowError(null);
+    setRowNotice(null);
+    try {
+      const { authDeleted } = await deleteUser({ data: { authUserId } });
+      setRowNotice({
+        ok: authDeleted,
+        text: t(authDeleted ? "deletedOk" : "deletedAuthPending", {
+          email: who,
+        }),
+      });
       await refresh();
     } catch (e) {
       setRowError(e instanceof Error ? e.message : t("unknownError"));
@@ -360,7 +398,23 @@ export function SchoolMembersManager({
                             />
                           )}
                         </td>
-                        <td className="py-2 text-right">
+                        <td className="py-2 text-right whitespace-nowrap">
+                          {!isSelf && canDeleteUsers && (
+                            <button
+                              onClick={() =>
+                                setToDelete({
+                                  authUserId: p.auth_user_id,
+                                  email: p.email,
+                                })
+                              }
+                              disabled={busy}
+                              title={t("deleteUser")}
+                              aria-label={`${t("deleteUser")}: ${p.email}`}
+                              className="mr-1 rounded-full p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                            >
+                              <UserX className="size-4" />
+                            </button>
+                          )}
                           {!isSelf && (
                             <button
                               onClick={() =>
@@ -392,6 +446,14 @@ export function SchoolMembersManager({
         )}
         {rowError && (
           <p className="text-sm text-destructive-foreground">{rowError}</p>
+        )}
+        {rowNotice && (
+          <p
+            role="status"
+            className={`text-sm ${rowNotice.ok ? "text-muted-foreground" : "text-destructive-foreground"}`}
+          >
+            {rowNotice.text}
+          </p>
         )}
 
         {data.invites.length > 0 && (
@@ -511,6 +573,31 @@ export function SchoolMembersManager({
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => void confirmRemove()}>
               {t("removeMember")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={toDelete !== null}
+        onOpenChange={(open) => !open && setToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("deleteConfirmTitle", { email: toDelete?.email ?? "" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteConfirmText")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void confirmDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("deleteUser")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

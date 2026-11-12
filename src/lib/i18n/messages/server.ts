@@ -76,6 +76,16 @@ export const serverMessages = defineMessages({
     es: "No puedes cambiar tu propio rol ni quitarte del centro.",
     en: "You cannot change your own role or remove yourself from the school.",
   },
+  cannotDeleteSelf: {
+    ca: "No et pots esborrar a tu mateix.",
+    es: "No puedes borrarte a ti mismo.",
+    en: "You cannot delete yourself.",
+  },
+  userNotFound: {
+    ca: "Aquesta persona ja no existeix.",
+    es: "Esta persona ya no existe.",
+    en: "This person no longer exists.",
+  },
   memberNotFound: {
     ca: "Aquesta persona no és membre de l'escola.",
     es: "Esta persona no es miembro del centro.",

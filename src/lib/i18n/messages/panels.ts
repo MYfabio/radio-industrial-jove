@@ -94,6 +94,31 @@ export const panelsMessages = defineMessages({
     es: "Dejará de tener centro, clase y permisos (volverá a ser alumno sin clase). Su cuenta y sus pódcasts no se borran.",
     en: "They will lose their school, class and permissions (back to a student with no class). Their account and podcasts are not deleted.",
   },
+  deleteUser: {
+    ca: "Esborra del tot",
+    es: "Borrar del todo",
+    en: "Delete completely",
+  },
+  deleteConfirmTitle: {
+    ca: "Esborrar {email} del tot?",
+    es: "¿Borrar a {email} del todo?",
+    en: "Delete {email} completely?",
+  },
+  deleteConfirmText: {
+    ca: "S'esborren el seu compte, el seu perfil, els seus esborranys, els seus sons i els seus preferits. Els pòdcasts que ha publicat es queden a la ràdio, sense compte associat, i el nom d'autor no es toca. Això no es pot desfer.",
+    es: "Se borran su cuenta, su perfil, sus borradores, sus sonidos y sus favoritos. Los pódcasts que ha publicado se quedan en la radio, sin cuenta asociada, y el nombre de autor no se toca. No se puede deshacer.",
+    en: "Their account, profile, drafts, sounds and favourites are deleted. The podcasts they published stay on the radio, with no linked account, and the author name is left as is. This cannot be undone.",
+  },
+  deletedOk: {
+    ca: "{email} esborrat del tot.",
+    es: "{email} borrado del todo.",
+    en: "{email} deleted completely.",
+  },
+  deletedAuthPending: {
+    ca: "{email} esborrat de la ràdio, però el seu compte d'accés continua a Supabase perquè a Railway falta SUPABASE_SERVICE_ROLE_KEY: podria tornar a entrar com a alumne nou.",
+    es: "{email} borrado de la radio, pero su cuenta de acceso sigue en Supabase porque en Railway falta SUPABASE_SERVICE_ROLE_KEY: podría volver a entrar como alumno nuevo.",
+    en: "{email} was deleted from the radio, but their sign-in account is still in Supabase because SUPABASE_SERVICE_ROLE_KEY is missing on Railway: they could sign in again as a new student.",
+  },
   pendingTitle: {
     ca: "Pendents d'entrar per primer cop ({count})",
     es: "Pendientes de entrar por primera vez ({count})",

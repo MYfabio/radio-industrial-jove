@@ -386,6 +386,54 @@ export const removeMemberFn = createServerFn({ method: "POST" })
     }
   });
 
+/**
+ * Esborra una persona del tot: les seves dades a la base i el seu compte
+ * d'accés a Supabase. Només el super admin, sigui de l'escola que sigui.
+ *
+ * El compte de Supabase només es pot esborrar amb SUPABASE_SERVICE_ROLE_KEY.
+ * Si falta, s'esborren igualment les dades i es retorna authDeleted: false
+ * perquè la pantalla avisi que aquella persona podria tornar a entrar.
+ */
+export const deleteUserFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: MemberIdInput) => input)
+  .handler(async ({ context, data }) => {
+    const { getSql } = await import("./podcasts.server");
+    const { isSuperAdminEmail } = await import("./settings.server");
+    const { deleteUserData } = await import("./schools.server");
+    const email = (context.claims["email"] as string | undefined) ?? "";
+    if (!isSuperAdminEmail(email)) throw new Error(await msg("superAdminOnly"));
+    if (data.authUserId === context.userId)
+      throw new Error(await msg("cannotDeleteSelf"));
+
+    const sql = getSql();
+    let deleted: { email: string } | null;
+    try {
+      deleted = await deleteUserData(sql, data.authUserId);
+    } catch (err) {
+      throw new Error(describePgError(err));
+    } finally {
+      await sql.end();
+    }
+    if (!deleted) throw new Error(await msg("userNotFound"));
+
+    let authDeleted = false;
+    if (process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+      const { supabaseAdmin } =
+        await import("@/integrations/supabase/client.server");
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(
+        data.authUserId,
+      );
+      // 404: el compte ja no hi era; el resultat és el mateix.
+      if (!error || error.status === 404) authDeleted = true;
+      else
+        console.error(
+          `[deleteUser] Supabase no ha esborrat el compte ${data.authUserId}: ${error.message}`,
+        );
+    }
+    return { ok: true, authDeleted };
+  });
+
 export const deleteInviteFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: InviteIdInput) => input)

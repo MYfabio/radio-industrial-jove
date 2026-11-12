@@ -301,6 +301,61 @@ export async function removeMember(sql: Sql, schoolId: number, userId: string): 
   return true;
 }
 
+/**
+ * Esborra una persona del tot. Només ho fa el super admin; el coordinador
+ * només pot treure algú del centre (removeMember).
+ *
+ * Decisió del propietari (12/11/2026): els pòdcasts que ha publicat són de la
+ * ràdio del centre i es queden, sense compte associat; el nom d'autor no es
+ * toca. La resta del que és seu (esborranys, sons propis, preferits) marxa amb
+ * ella. Les classes que va crear són del centre i es queden tal com estan.
+ *
+ * Retorna null si no hi ha cap perfil amb aquest identificador. El compte de
+ * Supabase Auth l'esborra qui crida, després: aquí només hi ha la base de dades.
+ */
+export async function deleteUserData(
+  sql: Sql,
+  userId: string,
+): Promise<{ email: string } | null> {
+  const [profile] = await sql.unsafe(
+    `SELECT email FROM profiles WHERE auth_user_id = ${sqlText(userId)}`,
+  );
+  if (!profile) return null;
+  const email = String(
+    (profile as { email?: string }).email ?? "",
+  ).toLowerCase();
+
+  // Les taules es creen la primera vegada que s'usen: s'asseguren abans perquè
+  // l'esborrat no falli en una instal·lació on algun mòdul encara no s'ha fet servir.
+  const { ensureSchema: ensurePodcastsSchema } =
+    await import("./podcasts.server");
+  const { ensureDraftsSchema } = await import("./drafts.server");
+  const { ensureSoundsSchema } = await import("./sounds.server");
+  const { ensureFavoritesSchema } = await import("./favorites.server");
+  await ensurePodcastsSchema(sql);
+  await ensureDraftsSchema(sql);
+  await ensureSoundsSchema(sql);
+  await ensureFavoritesSchema(sql);
+
+  const id = sqlText(userId);
+  await sql.begin(async (tx) => {
+    await tx.unsafe(
+      `UPDATE podcasts SET owner_user_id = NULL WHERE owner_user_id = ${id}`,
+    );
+    await tx.unsafe(`DELETE FROM favorites WHERE auth_user_id = ${id}`);
+    // draft_segments penja de drafts amb ON DELETE CASCADE.
+    await tx.unsafe(`DELETE FROM drafts WHERE owner_user_id = ${id}`);
+    await tx.unsafe(`DELETE FROM sounds WHERE owner_user_id = ${id}`);
+    await tx.unsafe(`DELETE FROM class_members WHERE auth_user_id = ${id}`);
+    if (email)
+      await tx.unsafe(
+        `DELETE FROM school_invites WHERE lower(email) = ${sqlText(email)}`,
+      );
+    await tx.unsafe(`DELETE FROM profiles WHERE auth_user_id = ${id}`);
+  });
+  return { email };
+}
+
 export async function deleteInvite(sql: Sql, schoolId: number, inviteId: number): Promise<boolean> {
   const rows = await sql.unsafe(
     `DELETE FROM school_invites WHERE id = ${sqlInt(inviteId)} AND school_id = ${sqlInt(schoolId)} RETURNING id`,
