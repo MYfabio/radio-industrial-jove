@@ -25,6 +25,7 @@ import { Route as TermesRouteImport } from './routes/termes'
 import { Route as ApiAiEditRouteImport } from './routes/api/ai-edit'
 import { Route as ClasseCodeRouteImport } from './routes/classe.$code'
 import { Route as EscolaSlugRouteImport } from './routes/escola.$slug'
+import { Route as PodcastIdRouteImport } from './routes/podcast.$id'
 import { Route as UneixCodeRouteImport } from './routes/uneix.$code'
 import { Route as ApiPublicAudioIdRouteImport } from './routes/api/public/audio/$id'
 import { Route as ApiPublicCoverIdRouteImport } from './routes/api/public/cover/$id'
@@ -109,6 +110,11 @@ const EscolaSlugRoute = EscolaSlugRouteImport.update({
   path: '/escola/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PodcastIdRoute = PodcastIdRouteImport.update({
+  id: '/podcast/$id',
+  path: '/podcast/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UneixCodeRoute = UneixCodeRouteImport.update({
   id: '/uneix/$code',
   path: '/uneix/$code',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/api/ai-edit': typeof ApiAiEditRoute
   '/classe/$code': typeof ClasseCodeRoute
   '/escola/$slug': typeof EscolaSlugRoute
+  '/podcast/$id': typeof PodcastIdRoute
   '/uneix/$code': typeof UneixCodeRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/api/ai-edit': typeof ApiAiEditRoute
   '/classe/$code': typeof ClasseCodeRoute
   '/escola/$slug': typeof EscolaSlugRoute
+  '/podcast/$id': typeof PodcastIdRoute
   '/uneix/$code': typeof UneixCodeRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/api/ai-edit': typeof ApiAiEditRoute
   '/classe/$code': typeof ClasseCodeRoute
   '/escola/$slug': typeof EscolaSlugRoute
+  '/podcast/$id': typeof PodcastIdRoute
   '/uneix/$code': typeof UneixCodeRoute
   '/api/public/audio/$id': typeof ApiPublicAudioIdRoute
   '/api/public/cover/$id': typeof ApiPublicCoverIdRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/api/ai-edit'
     | '/classe/$code'
     | '/escola/$slug'
+    | '/podcast/$id'
     | '/uneix/$code'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/api/ai-edit'
     | '/classe/$code'
     | '/escola/$slug'
+    | '/podcast/$id'
     | '/uneix/$code'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/api/ai-edit'
     | '/classe/$code'
     | '/escola/$slug'
+    | '/podcast/$id'
     | '/uneix/$code'
     | '/api/public/audio/$id'
     | '/api/public/cover/$id'
@@ -272,6 +284,7 @@ export interface RootRouteChildren {
   ApiAiEditRoute: typeof ApiAiEditRoute
   ClasseCodeRoute: typeof ClasseCodeRoute
   EscolaSlugRoute: typeof EscolaSlugRoute
+  PodcastIdRoute: typeof PodcastIdRoute
   UneixCodeRoute: typeof UneixCodeRoute
   ApiPublicAudioIdRoute: typeof ApiPublicAudioIdRoute
   ApiPublicCoverIdRoute: typeof ApiPublicCoverIdRoute
@@ -391,6 +404,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EscolaSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/podcast/$id': {
+      id: '/podcast/$id'
+      path: '/podcast/$id'
+      fullPath: '/podcast/$id'
+      preLoaderRoute: typeof PodcastIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/uneix/$code': {
       id: '/uneix/$code'
       path: '/uneix/$code'
@@ -432,6 +452,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAiEditRoute: ApiAiEditRoute,
   ClasseCodeRoute: ClasseCodeRoute,
   EscolaSlugRoute: EscolaSlugRoute,
+  PodcastIdRoute: PodcastIdRoute,
   UneixCodeRoute: UneixCodeRoute,
   ApiPublicAudioIdRoute: ApiPublicAudioIdRoute,
   ApiPublicCoverIdRoute: ApiPublicCoverIdRoute,

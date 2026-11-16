@@ -4,6 +4,7 @@
  */
 import postgres from "postgres";
 import { ensureClassesSchema } from "./classes.server";
+import { ensureSchoolsSchema } from "./schools.server";
 import { sqlText, sqlInt, sqlTextArray, sqlBytea } from "./sqlLiteral";
 
 export type Sql = ReturnType<typeof postgres>;
@@ -73,7 +74,12 @@ export async function ensureSchema(sql: Sql) {
   await sql.unsafe(
     `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS owner_user_id TEXT`,
   );
+  await sql.unsafe(
+    `ALTER TABLE podcasts ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT FALSE`,
+  );
   await sql.unsafe(`ALTER TABLE podcasts ALTER COLUMN audio_url DROP NOT NULL`);
+  // Les llistes fan JOIN amb schools per saber si un pòdcast és públic.
+  await ensureSchoolsSchema(sql);
 }
 
 export interface PodcastRow {
@@ -92,19 +98,33 @@ export interface PodcastRow {
   teacher_note: string | null;
   publish_at: string | null;
   created_at: string;
+  /** El docent l'ha destacat: surt a la capçalera del mur. */
+  featured?: boolean;
   has_cover_image?: boolean;
   class_id: number | null;
   class_name: string | null;
   school_id: number | null;
   share_to_school: boolean | null;
   class_owner_id: string | null;
+  /** Aprovat, ja publicat i visible per a qualsevol (té pàgina pròpia a /podcast/$id). */
+  is_public?: boolean;
 }
 
+const APPROVED_WHERE = `p.status = 'aprovat' AND (p.publish_at IS NULL OR p.publish_at <= now())`;
+
+/**
+ * Públic = es pot obrir sense sessió: o bé és del mur obert (sense classe),
+ * o bé la classe el comparteix al mur de l'escola i l'escola permet
+ * compartir fora del centre.
+ */
+const PUBLIC_WHERE = `(${APPROVED_WHERE} AND (p.class_id IS NULL OR (c.share_to_school = TRUE AND COALESCE(s.allow_external_sharing, FALSE) = TRUE)))`;
+
 const LIST_COLUMNS = `p.id, p.title, p."desc", p.cat, p.author, p.tags, p.audio_url, p.transcript,
-  p.dur, p.status, p.cover, p.template, p.teacher_note, p.publish_at, p.created_at,
+  p.dur, p.status, p.cover, p.template, p.teacher_note, p.publish_at, p.created_at, p.featured,
   (p.cover_data IS NOT NULL) AS has_cover_image, p.class_id, c.name AS class_name,
-  c.school_id, c.share_to_school, c.created_by AS class_owner_id`;
-const LIST_FROM = `podcasts p LEFT JOIN classes c ON c.id = p.class_id`;
+  c.school_id, c.share_to_school, c.created_by AS class_owner_id,
+  ${PUBLIC_WHERE} AS is_public`;
+const LIST_FROM = `podcasts p LEFT JOIN classes c ON c.id = p.class_id LEFT JOIN schools s ON s.id = c.school_id`;
 
 export interface NewPodcast {
   title: string;
@@ -158,8 +178,6 @@ export async function createPodcast(sql: Sql, data: NewPodcast) {
   );
   return { id, audio_url: audioUrl };
 }
-
-const APPROVED_WHERE = `p.status = 'aprovat' AND (p.publish_at IS NULL OR p.publish_at <= now())`;
 
 /** Mur obert (/mur): pòdcasts sense classe (gravats fora de qualsevol escola). */
 export async function listApproved(sql: Sql) {
@@ -334,16 +352,49 @@ export async function reviewPodcast(
   status: string,
   teacherNote: string | null,
   publishAt: string | null,
+  featured?: boolean,
 ) {
   await ensureSchema(sql);
+  const featuredSet =
+    featured === undefined ? "" : `featured = ${featured ? "TRUE" : "FALSE"},`;
   await sql.unsafe(`
     UPDATE podcasts
-       SET status = ${sqlText(status)},
+       SET ${featuredSet}
+           status = ${sqlText(status)},
            teacher_note = ${sqlText(teacherNote)},
            publish_at = ${sqlText(publishAt)}::timestamptz
      WHERE id = ${sqlInt(id)}
   `);
   return { ok: true };
+}
+
+export interface PublicPodcast {
+  podcast: PodcastRow;
+  radioName: string | null;
+  schoolSlug: string | null;
+}
+
+/** Pàgina pròpia d'un pòdcast (/podcast/$id): només si és públic. */
+export async function getPublicPodcast(
+  sql: Sql,
+  id: number,
+): Promise<PublicPodcast | null> {
+  await ensureSchema(sql);
+  await ensureClassesSchema(sql);
+  const [row] = await sql.unsafe(`
+    SELECT ${LIST_COLUMNS}, s.radio_name, s.slug AS school_slug FROM ${LIST_FROM}
+    WHERE p.id = ${sqlInt(id)} AND ${PUBLIC_WHERE}
+  `);
+  if (!row) return null;
+  const { radio_name, school_slug, ...podcast } = row as Record<
+    string,
+    unknown
+  >;
+  return {
+    podcast: podcast as unknown as PodcastRow,
+    radioName: (radio_name as string | null) ?? null,
+    schoolSlug: (school_slug as string | null) ?? null,
+  };
 }
 
 export async function getAudio(sql: Sql, id: number) {

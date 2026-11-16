@@ -121,6 +121,16 @@ export const mestreMessages = defineMessages({
     es: "Aprobar y publicar en el muro",
     en: "Approve and publish on the wall",
   },
+  featuredLabel: {
+    ca: "Destacar a la capçalera del mur",
+    es: "Destacar en la cabecera del muro",
+    en: "Feature at the top of the wall",
+  },
+  featuredHint: {
+    ca: "Si no n'hi ha cap de destacat, hi surt l'últim publicat.",
+    es: "Si no hay ninguno destacado, sale el último publicado.",
+    en: "If none is featured, the latest one is shown.",
+  },
   saveNote: {
     ca: "Desar comentari",
     es: "Guardar comentario",

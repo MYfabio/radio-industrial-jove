@@ -4,6 +4,19 @@ import { defineMessages } from "../index";
 export const podcastWallMessages = defineMessages({
   openPodcast: { ca: "Obre {title}", es: "Abrir {title}", en: "Open {title}" },
   otherCategory: { ca: "Altres", es: "Otros", en: "Other" },
+  allCategories: { ca: "Tots", es: "Todos", en: "All" },
+  categoryFilter: {
+    ca: "Filtra per categoria",
+    es: "Filtrar por categoría",
+    en: "Filter by category",
+  },
+  featuredBadge: { ca: "Destacat", es: "Destacado", en: "Featured" },
+  latestBadge: {
+    ca: "Últim pòdcast",
+    es: "Último pódcast",
+    en: "Latest podcast",
+  },
+  listen: { ca: "Escoltar", es: "Escuchar", en: "Listen" },
   anonymous: { ca: "Anònim", es: "Anónimo", en: "Anonymous" },
   addFavorite: {
     ca: "Afegir als preferits",

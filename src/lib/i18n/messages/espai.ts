@@ -101,7 +101,11 @@ export const espaiMessages = defineMessages({
   },
 
   // Projectes a mig fer (els mateixos que surten a l'estudi)
-  tabDrafts: { ca: "Els meus projectes", es: "Mis proyectos", en: "My projects" },
+  tabDrafts: {
+    ca: "Els meus projectes",
+    es: "Mis proyectos",
+    en: "My projects",
+  },
   emptyDrafts: {
     ca: "No tens cap projecte a mig fer. Quan en desis un a l'estudi, el trobaràs aquí.",
     es: "No tienes ningún proyecto a medias. Cuando guardes uno en el estudio, lo encontrarás aquí.",

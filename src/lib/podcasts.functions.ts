@@ -6,11 +6,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { optionalSupabaseAuth } from "./optionalAuth.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { NewPodcast, PodcastEdit, PodcastRow } from "./podcasts.server";
+import type {
+  NewPodcast,
+  PodcastEdit,
+  PodcastRow,
+  PublicPodcast,
+} from "./podcasts.server";
 import type { Role } from "./settings.server";
 import { describePgError } from "./pgError";
 
-export type { PodcastRow };
+export type { PodcastRow, PublicPodcast };
 
 /** Missatges d'error en la llengua de qui fa la petició. */
 async function msg(
@@ -239,6 +244,23 @@ export const fetchSchoolWall = createServerFn({ method: "GET" })
     },
   );
 
+/** Pàgina pròpia d'un pòdcast públic (/podcast/$id), per compartir l'enllaç. */
+export const fetchPublicPodcast = createServerFn({ method: "GET" })
+  .inputValidator((input: { id: number }) => input)
+  .handler(async ({ data }): Promise<PublicPodcast | null> => {
+    const id = Number(data.id);
+    if (!Number.isInteger(id) || id <= 0) return null;
+    const { getSql, getPublicPodcast } = await import("./podcasts.server");
+    const sql = getSql();
+    try {
+      return await getPublicPodcast(sql, id);
+    } catch (err) {
+      throw new Error(describePgError(err));
+    } finally {
+      await sql.end();
+    }
+  });
+
 export interface ClassWallInput {
   code: string;
 }
@@ -298,6 +320,8 @@ export interface ReviewInput {
   status: "pendent" | "aprovat" | "rebutjat";
   teacherNote: string | null;
   publishAt: string | null;
+  /** Destacar-lo a la capçalera del mur. */
+  featured?: boolean;
 }
 
 export const reviewPodcastFn = createServerFn({ method: "POST" })
@@ -312,6 +336,7 @@ export const reviewPodcastFn = createServerFn({ method: "POST" })
         data.status,
         data.teacherNote,
         data.publishAt,
+        data.featured,
       );
     } catch (err) {
       throw new Error(describePgError(err));

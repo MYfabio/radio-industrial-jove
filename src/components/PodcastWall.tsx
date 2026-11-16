@@ -2,20 +2,12 @@
  * Vista de "mur" reutilitzada per les tres variants: /mur (obert, sense
  * classe), /escola/$slug (mur d'una escola) i /classe/$code (mur d'una
  * classe). Cada ruta només resol quines dades mostrar; tota la part visual
- * (cerca, agrupació per categoria, diàleg de detall, preferits) viu aquí.
+ * (capçalera amb el destacat, cerca, filtre per categoria, graella única
+ * amb els últims primer, diàleg de detall, preferits) viu aquí.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Clock,
-  Tag,
-  Search,
-  Play,
-  Share2,
-  Check,
-  Lock,
-  Heart,
-} from "lucide-react";
+import { Clock, Tag, Search, Play, Lock, Heart, Star } from "lucide-react";
 import type { PodcastRow } from "@/lib/podcasts.functions";
 import {
   fetchMyFavoriteIds,
@@ -27,6 +19,7 @@ import { trackPlay } from "@/lib/playTracker";
 import { useT } from "@/lib/i18n";
 import { podcastWallMessages as m } from "@/lib/i18n/messages/podcastWall";
 import { AuthButton } from "@/components/AuthButton";
+import { SharePodcast, podcastUrl } from "@/components/SharePodcast";
 import {
   Dialog,
   DialogContent,
@@ -76,14 +69,58 @@ function formatTime(s: number) {
   return `${String(m).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
+function normTitle(t: string) {
+  return t
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/**
+ * Treu els repetits (el mateix pòdcast pujat més d'un cop). Es queda amb el
+ * primer que troba, que és el més recent perquè la llista ja ve ordenada.
+ * Repetit = mateix títol (sense accents ni signes), o un títol que comença
+ * igual que l'altre amb una durada gairebé idèntica (±15 s).
+ */
+function dedupe(items: PodcastRow[]) {
+  const kept: { p: PodcastRow; t: string }[] = [];
+  for (const p of items) {
+    const t = normTitle(p.title);
+    const dup = kept.some(
+      (k) =>
+        k.t === t ||
+        (Math.min(k.t.length, t.length) >= 10 &&
+          (k.t.startsWith(t) || t.startsWith(k.t)) &&
+          Math.abs(k.p.dur - p.dur) <= 15),
+    );
+    if (!dup) kept.push({ p, t });
+  }
+  return kept.map((k) => k.p);
+}
+
+/**
+ * Enllaç per compartir: la pàgina pròpia si el pòdcast és públic; si no
+ * (p. ex. només al mur d'una classe), el mur actual amb el pòdcast obert.
+ */
+function shareUrlFor(p: PodcastRow, shareParam: string) {
+  if (p.is_public) return podcastUrl(p.id);
+  return `${window.location.origin}${window.location.pathname}?${shareParam}=${p.id}`;
+}
+
 function Poster({
   p,
   onOpen,
+  canShare,
+  shareParam,
   favorited,
   onToggleFavorite,
 }: {
   p: PodcastRow;
   onOpen: () => void;
+  canShare: boolean;
+  shareParam: string;
   favorited?: boolean | undefined;
   onToggleFavorite?: (() => void) | undefined;
 }) {
@@ -91,7 +128,7 @@ function Poster({
   const cat = p.cat || "Altres";
   const color = colorFor(cat);
   return (
-    <div className="group relative w-48 shrink-0 snap-start sm:w-60">
+    <div className="group relative w-full">
       <button
         onClick={onOpen}
         className="block w-full text-left"
@@ -147,47 +184,25 @@ function Poster({
           />
         </button>
       )}
-      <h3 className="mt-1.5 truncate text-sm font-bold leading-tight">
-        {p.title}
-      </h3>
-      <p className="truncate text-xs text-muted-foreground">
-        {p.author || t("anonymous")} · {formatTime(p.dur)}
-      </p>
+      <div className="mt-1.5 flex items-start gap-1">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-bold leading-tight">
+            {p.title}
+          </h3>
+          <p className="truncate text-xs text-muted-foreground">
+            {p.author || t("anonymous")} · {formatTime(p.dur)}
+          </p>
+        </div>
+        {canShare && (
+          <SharePodcast
+            variant="icon"
+            title={p.title}
+            isPublic={!!p.is_public}
+            getUrl={() => shareUrlFor(p, shareParam)}
+          />
+        )}
+      </div>
     </div>
-  );
-}
-
-function ShareButton({ id, shareParam }: { id: number; shareParam: string }) {
-  const t = useT(m);
-  const [copied, setCopied] = useState(false);
-
-  const share = async () => {
-    const url = `${window.location.origin}${window.location.pathname}?${shareParam}=${id}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ url });
-        return;
-      } catch {
-        // L'usuari ha cancel·lat o el navegador no ho ha pogut fer: fem servir el porta-retalls.
-      }
-    }
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      onClick={() => void share()}
-      className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-semibold hover:bg-secondary"
-    >
-      {copied ? (
-        <Check className="size-4 text-accent" />
-      ) : (
-        <Share2 className="size-4" />
-      )}
-      {copied ? t("linkCopied") : t("share")}
-    </button>
   );
 }
 
@@ -277,7 +292,13 @@ function DetailDialog({
                 {favorited ? t("inFavorites") : t("favorite")}
               </button>
             )}
-            {canShare && <ShareButton id={p.id} shareParam={shareParam} />}
+            {canShare && (
+              <SharePodcast
+                title={p.title}
+                isPublic={!!p.is_public}
+                getUrl={() => shareUrlFor(p, shareParam)}
+              />
+            )}
           </div>
 
           {Array.isArray(p.tags) && p.tags.length > 0 && (
@@ -307,45 +328,65 @@ function DetailDialog({
   );
 }
 
-function CategoryRow({
-  label,
-  color,
-  items,
+function Hero({
+  p,
+  isFeatured,
   onOpen,
-  favoriteIds,
-  onToggleFavorite,
 }: {
-  label: string;
-  color: string;
-  items: PodcastRow[];
-  onOpen: (p: PodcastRow) => void;
-  favoriteIds: Set<number> | null;
-  onToggleFavorite: ((id: number) => void) | null;
+  p: PodcastRow;
+  isFeatured: boolean;
+  onOpen: () => void;
 }) {
   const t = useT(m);
+  const color = colorFor(p.cat || "Altres");
   return (
-    <section className="mb-6">
-      <h2 className="mb-2 flex items-center gap-2 text-base font-bold sm:text-lg">
-        <span className="size-2.5 rounded-full" style={{ background: color }} />
-        {label === "Altres" ? t("otherCategory") : label}
-        <span className="text-xs font-normal text-muted-foreground">
-          ({items.length})
+    <button
+      onClick={onOpen}
+      aria-label={t("openPodcast", { title: p.title })}
+      className="group relative mb-8 block aspect-[16/9] w-full overflow-hidden rounded-3xl text-left shadow-xl sm:aspect-[21/8]"
+      style={
+        p.has_cover_image
+          ? undefined
+          : { background: `linear-gradient(135deg, ${color}, #0E2A4E)` }
+      }
+    >
+      {p.has_cover_image && (
+        <img
+          src={`/api/public/cover/${p.id}`}
+          alt=""
+          className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+      )}
+      <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent sm:bg-gradient-to-r" />
+      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-5 text-white sm:max-w-xl sm:p-8">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-black">
+            <Star className="size-3" fill="currentColor" />
+            {isFeatured ? t("featuredBadge") : t("latestBadge")}
+          </span>
+          <span
+            className="rounded-full px-2.5 py-1 text-xs font-bold"
+            style={{ background: color }}
+          >
+            {p.cat || t("otherCategory")}
+          </span>
         </span>
-      </h2>
-      <div className="scrollbar-none -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-2">
-        {items.map((p) => (
-          <Poster
-            key={p.id}
-            p={p}
-            onOpen={() => onOpen(p)}
-            favorited={favoriteIds?.has(p.id)}
-            onToggleFavorite={
-              onToggleFavorite ? () => onToggleFavorite(p.id) : undefined
-            }
-          />
-        ))}
+        <h2 className="text-2xl font-extrabold leading-tight sm:text-4xl">
+          {p.title}
+        </h2>
+        <p className="text-sm text-white/80">
+          {p.author || t("anonymous")} · {formatTime(p.dur)}
+        </p>
+        {p.desc && (
+          <p className="hidden text-sm text-white/80 line-clamp-2 sm:block">
+            {p.desc}
+          </p>
+        )}
+        <span className="mt-1 inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition-transform group-hover:scale-105">
+          <Play className="size-4" fill="currentColor" /> {t("listen")}
+        </span>
       </div>
-    </section>
+    </button>
   );
 }
 
@@ -377,6 +418,7 @@ export function PodcastWallView({
   const qc = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
   const [active, setActive] = useState<PodcastRow | null>(null);
 
   const { data: favoriteIdsList } = useQuery({
@@ -415,29 +457,38 @@ export function PodcastWallView({
     if (match) setActive(match);
   }, [locked, items, shareParam]);
 
-  const q = query.trim().toLowerCase();
-  const filtered = q
-    ? items.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          (p.author ?? "").toLowerCase().includes(q) ||
-          (Array.isArray(p.tags) ? p.tags : []).some((t) =>
-            t.toLowerCase().includes(q),
-          ),
-      )
-    : items;
+  const unique = useMemo(() => dedupe(items), [items]);
 
-  const groups = useMemo(() => {
-    const byCat = new Map<string, PodcastRow[]>();
-    for (const p of filtered) {
+  // Capçalera: l'últim que el docent ha destacat; si no n'hi ha, l'últim publicat.
+  const featured = unique.find((p) => p.featured) ?? null;
+  const hero = featured ?? unique[0] ?? null;
+
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of unique) {
       const key = p.cat || "Altres";
-      if (!byCat.has(key)) byCat.set(key, []);
-      byCat.get(key)!.push(p);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
     }
-    return Array.from(byCat.entries())
-      .map(([label, items]) => ({ label, items, color: colorFor(label) }))
-      .sort((a, b) => b.items.length - a.items.length);
-  }, [filtered]);
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count, color: colorFor(label) }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [unique]);
+
+  const q = query.trim().toLowerCase();
+  const filtering = !!q || category !== null;
+  const filtered = unique.filter(
+    (p) =>
+      (category === null || (p.cat || "Altres") === category) &&
+      (!q ||
+        p.title.toLowerCase().includes(q) ||
+        (p.author ?? "").toLowerCase().includes(q) ||
+        (Array.isArray(p.tags) ? p.tags : []).some((t) =>
+          t.toLowerCase().includes(q),
+        )),
+  );
+  // Sense filtres, el de la capçalera no es repeteix a la graella.
+  const grid =
+    !filtering && hero ? filtered.filter((p) => p.id !== hero.id) : filtered;
 
   return (
     <>
@@ -465,16 +516,71 @@ export function PodcastWallView({
         </div>
       ) : (
         <>
-          <div className="relative mb-8 max-w-md">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              aria-label={t("searchLabel")}
-              className="w-full rounded-full border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none ring-accent focus:ring-2"
+          {hero && !filtering && (
+            <Hero
+              p={hero}
+              isFeatured={!!featured}
+              onOpen={() => setActive(hero)}
             />
+          )}
+
+          <div className="mb-6 flex flex-col gap-3">
+            <div className="relative max-w-md">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("searchPlaceholder")}
+                aria-label={t("searchLabel")}
+                className="w-full rounded-full border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none ring-accent focus:ring-2"
+              />
+            </div>
+            {categories.length > 1 && (
+              <div
+                role="group"
+                aria-label={t("categoryFilter")}
+                className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
+              >
+                <button
+                  onClick={() => setCategory(null)}
+                  aria-pressed={category === null}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    category === null
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-card hover:bg-secondary"
+                  }`}
+                >
+                  {t("allCategories")} ({unique.length})
+                </button>
+                {categories.map((c) => (
+                  <button
+                    key={c.label}
+                    onClick={() =>
+                      setCategory(category === c.label ? null : c.label)
+                    }
+                    aria-pressed={category === c.label}
+                    className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      category === c.label
+                        ? "border-transparent text-white"
+                        : "border-border bg-card hover:bg-secondary"
+                    }`}
+                    style={
+                      category === c.label ? { background: c.color } : undefined
+                    }
+                  >
+                    {category !== c.label && (
+                      <span
+                        className="size-2 rounded-full"
+                        style={{ background: c.color }}
+                      />
+                    )}
+                    {c.label === "Altres" ? t("otherCategory") : c.label} (
+                    {c.count})
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {items.length === 0 && (
@@ -485,21 +591,23 @@ export function PodcastWallView({
 
           {items.length > 0 && filtered.length === 0 && (
             <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
-              {t("noMatch", { query })}
+              {t("noMatch", { query: query || category || "" })}
             </p>
           )}
 
-          {groups.map((g) => (
-            <CategoryRow
-              key={g.label}
-              label={g.label}
-              color={g.color}
-              items={g.items}
-              onOpen={setActive}
-              favoriteIds={favoriteIds}
-              onToggleFavorite={user ? toggleFavorite : null}
-            />
-          ))}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {grid.map((p) => (
+              <Poster
+                key={p.id}
+                p={p}
+                onOpen={() => setActive(p)}
+                canShare={canShare}
+                shareParam={shareParam}
+                favorited={favoriteIds?.has(p.id)}
+                onToggleFavorite={user ? () => toggleFavorite(p.id) : undefined}
+              />
+            ))}
+          </div>
         </>
       )}
 

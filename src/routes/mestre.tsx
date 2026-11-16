@@ -18,6 +18,7 @@ import {
   Link2,
   Trash2,
   LayoutDashboard,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,6 +113,7 @@ function Row({ p, onSaved }: { p: PodcastRow; onSaved: () => void }) {
   const [when, setWhen] = useState(
     p.publish_at ? p.publish_at.slice(0, 16) : "",
   );
+  const [featured, setFeatured] = useState(!!p.featured);
   const [busy, setBusy] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
@@ -127,6 +129,7 @@ function Row({ p, onSaved }: { p: PodcastRow; onSaved: () => void }) {
           status,
           teacherNote: note.trim() || null,
           publishAt: when ? new Date(when).toISOString() : null,
+          featured,
         },
       });
       notifyPodcastsChanged();
@@ -230,6 +233,17 @@ function Row({ p, onSaved }: { p: PodcastRow; onSaved: () => void }) {
           </p>
         </div>
       </div>
+
+      <label className="mt-3 flex items-center gap-2 text-sm">
+        <Switch checked={featured} onCheckedChange={setFeatured} />
+        <Star
+          className={`size-4 ${featured ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`}
+        />
+        <span className="font-semibold">{t("featuredLabel")}</span>
+        <span className="text-xs text-muted-foreground">
+          {t("featuredHint")}
+        </span>
+      </label>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button
