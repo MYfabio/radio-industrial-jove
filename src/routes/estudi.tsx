@@ -31,6 +31,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
+import { WallLink } from "@/components/WallLink";
 import { StudioMixer, useStudioAudio } from "@/components/StudioMixer";
 
 import { Button } from "@/components/ui/button";
@@ -849,12 +850,10 @@ function RadioStudio() {
             <ThemeToggle />
             <LangToggle />
             <AuthButton />
-            <Link
-              to="/mur"
-              className="hidden rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary sm:inline-flex"
-            >
+            <WallLink
+              className="hidden rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary sm:inline-flex">
               {t("classWall")}
-            </Link>
+            </WallLink>
             <Link
               to="/mestre"
               className="hidden items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary sm:inline-flex"
@@ -1820,9 +1819,9 @@ function RadioStudio() {
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {t("publishIntro")}{" "}
-                  <Link to="/mur" className="text-accent hover:underline">
+                  <WallLink className="text-accent hover:underline">
                     {t("publishIntroLink")}
-                  </Link>
+                  </WallLink>
                   .
                 </p>
                 <PublishPodcast

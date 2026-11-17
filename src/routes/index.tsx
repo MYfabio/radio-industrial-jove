@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
+import { WallLink } from "@/components/WallLink";
 import { SITE_NAME, siteTagline, SITE_URL } from "@/lib/siteConfig";
 import { langFromMatches, tr, useLang, useT } from "@/lib/i18n";
 import { homeMessages as m } from "@/lib/i18n/messages/home";
@@ -91,12 +92,10 @@ function LandingPage() {
             <ThemeToggle />
             <LangToggle />
             <AuthButton />
-            <Link
-              to="/mur"
-              className="hidden rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary sm:inline-flex"
-            >
+            <WallLink
+              className="hidden rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary sm:inline-flex">
               {t("classWallLink")}
-            </Link>
+            </WallLink>
           </div>
         </header>
 
@@ -118,12 +117,10 @@ function LandingPage() {
             >
               <Mic className="size-4" /> {t("enterStudio")}
             </Link>
-            <Link
-              to="/mur"
-              className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-semibold hover:bg-secondary"
-            >
+            <WallLink
+              className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-semibold hover:bg-secondary">
               {t("listenWall")} <ArrowRight className="size-4" />
-            </Link>
+            </WallLink>
           </div>
           <p className="text-xs text-muted-foreground">
             {t("heroNote")}

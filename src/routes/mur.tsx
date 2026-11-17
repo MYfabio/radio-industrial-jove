@@ -3,6 +3,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
+import { useMySchool } from "@/components/WallLink";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { fetchApprovedPodcasts } from "@/lib/podcasts.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
@@ -41,6 +42,7 @@ function Wall() {
   const { data: result } = useSuspenseQuery(wallQuery);
   const data = result.items;
   const t = useT(m);
+  const school = useMySchool();
 
   return (
     <main className="studio-bg min-h-screen px-4 py-8 sm:px-6">
@@ -57,6 +59,15 @@ function Wall() {
               <ThemeToggle />
               <LangToggle />
               <AuthButton />
+              {school && (
+                <Link
+                  to="/escola/$slug"
+                  params={{ slug: school.slug }}
+                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+                >
+                  {school.radioName}
+                </Link>
+              )}
               <Link
                 to="/estudi"
                 className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
