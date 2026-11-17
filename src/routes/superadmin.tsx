@@ -13,7 +13,10 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  School,
+  BarChart3,
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -177,132 +180,175 @@ function SuperAdminPanel() {
           </span>
         </header>
 
-        <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            <Inbox className="size-4" />{" "}
-            {t("pendingRequests", { count: pendingRequests.length })}
-          </h2>
+        <Tabs defaultValue="escoles">
+          <TabsList className="mb-6 h-auto w-full flex-wrap justify-start gap-1 rounded-2xl p-1">
+            <TabsTrigger
+              value="escoles"
+              className="gap-1.5 rounded-xl px-4 py-2"
+            >
+              <School className="size-4" /> {t("tabSchools")}
+            </TabsTrigger>
+            <TabsTrigger value="nova" className="gap-1.5 rounded-xl px-4 py-2">
+              <Plus className="size-4" /> {t("newSchool")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="sollicituds"
+              className="gap-1.5 rounded-xl px-4 py-2"
+            >
+              <Inbox className="size-4" /> {t("tabRequests")}
+              {pendingRequests.length > 0 && (
+                <span className="rounded-full bg-amber-500/20 px-1.5 text-xs font-bold text-amber-500">
+                  {pendingRequests.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="escoltes"
+              className="gap-1.5 rounded-xl px-4 py-2"
+            >
+              <BarChart3 className="size-4" /> {t("tabPlays")}
+            </TabsTrigger>
+          </TabsList>
 
-          {loadingRequests && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> {tp("loading")}
-            </p>
-          )}
-          {!loadingRequests && pendingRequests.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t("noPending")}</p>
-          )}
-          <div className="space-y-2">
-            {pendingRequests.map((r) => (
-              <div
-                key={r.id}
-                className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-border bg-secondary/40 p-3"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold">
-                    {r.name} ·{" "}
-                    <span className="font-normal text-muted-foreground">
-                      {r.email}
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {r.kind === "docent" ? t("wantsDocent") : t("wantsSchool")}
-                    {r.school_name && ` · ${r.school_name}`}
-                    {r.domain && ` · @${r.domain}`}
-                  </p>
-                  {r.message && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      "{r.message}"
-                    </p>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => void toggleResolved(r.id, true)}
-                >
-                  <Check className="size-3.5" /> {t("resolved")}
-                </Button>
+          <TabsContent value="sollicituds">
+            <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <Inbox className="size-4" />{" "}
+                {t("pendingRequests", { count: pendingRequests.length })}
+              </h2>
+
+              {loadingRequests && (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" /> {tp("loading")}
+                </p>
+              )}
+              {!loadingRequests && pendingRequests.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {t("noPending")}
+                </p>
+              )}
+              <div className="space-y-2">
+                {pendingRequests.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-border bg-secondary/40 p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">
+                        {r.name} ·{" "}
+                        <span className="font-normal text-muted-foreground">
+                          {r.email}
+                        </span>
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {r.kind === "docent"
+                          ? t("wantsDocent")
+                          : t("wantsSchool")}
+                        {r.school_name && ` · ${r.school_name}`}
+                        {r.domain && ` · @${r.domain}`}
+                      </p>
+                      {r.message && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          "{r.message}"
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void toggleResolved(r.id, true)}
+                    >
+                      <Check className="size-3.5" /> {t("resolved")}
+                    </Button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+            </section>
+          </TabsContent>
 
-        <div className="mb-6">
-          <PlayStatsPanel schools={schools ?? []} />
-        </div>
+          <TabsContent value="escoltes">
+            <PlayStatsPanel schools={schools ?? []} />
+          </TabsContent>
 
-        <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("newSchool")}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("schoolName")}
-            />
-            <Input
-              value={radioName}
-              onChange={(e) => setRadioName(e.target.value)}
-              placeholder={t("radioNameOptional")}
-            />
-            <Input
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              placeholder={t("googleDomain")}
-            />
-            <Input
-              value={coordinadorEmail}
-              onChange={(e) => setCoordinadorEmail(e.target.value)}
-              placeholder={t("coordinadorEmail")}
-            />
-          </div>
-          {error && (
-            <p className="text-sm text-destructive-foreground">{error}</p>
-          )}
-          <Button onClick={() => void submit()} disabled={creating}>
-            {creating ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Plus className="size-4" />
+          <TabsContent value="nova">
+            <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("newSchool")}
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("schoolName")}
+                />
+                <Input
+                  value={radioName}
+                  onChange={(e) => setRadioName(e.target.value)}
+                  placeholder={t("radioNameOptional")}
+                />
+                <Input
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  placeholder={t("googleDomain")}
+                />
+                <Input
+                  value={coordinadorEmail}
+                  onChange={(e) => setCoordinadorEmail(e.target.value)}
+                  placeholder={t("coordinadorEmail")}
+                />
+              </div>
+              {error && (
+                <p className="text-sm text-destructive-foreground">{error}</p>
+              )}
+              <Button onClick={() => void submit()} disabled={creating}>
+                {creating ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Plus className="size-4" />
+                )}
+                {t("createSchool")}
+              </Button>
+            </section>
+          </TabsContent>
+
+          <TabsContent value="escoles">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("schoolsTitle")}
+            </h2>
+
+            {isLoading && (
+              <p className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> {tp("loading")}
+              </p>
             )}
-            {t("createSchool")}
-          </Button>
-        </section>
+            {isError && (
+              <p className="text-sm text-destructive-foreground">
+                {loadError instanceof Error
+                  ? loadError.message
+                  : t("loadError")}
+              </p>
+            )}
+            {!isLoading && schools && schools.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-muted-foreground">
+                {t("noSchools")}
+              </p>
+            )}
 
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          {t("schoolsTitle")}
-        </h2>
-
-        {isLoading && (
-          <p className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> {tp("loading")}
-          </p>
-        )}
-        {isError && (
-          <p className="text-sm text-destructive-foreground">
-            {loadError instanceof Error ? loadError.message : t("loadError")}
-          </p>
-        )}
-        {!isLoading && schools && schools.length === 0 && (
-          <p className="rounded-2xl border border-dashed border-border p-6 text-center text-muted-foreground">
-            {t("noSchools")}
-          </p>
-        )}
-
-        <div className="space-y-2">
-          {schools?.map((s) => (
-            <SchoolCard
-              key={s.id}
-              school={s}
-              open={openSchoolId === s.id}
-              onToggle={() =>
-                setOpenSchoolId((cur) => (cur === s.id ? null : s.id))
-              }
-              selfUserId={user.id}
-            />
-          ))}
-        </div>
+            <div className="space-y-2">
+              {schools?.map((s) => (
+                <SchoolCard
+                  key={s.id}
+                  school={s}
+                  open={openSchoolId === s.id}
+                  onToggle={() =>
+                    setOpenSchoolId((cur) => (cur === s.id ? null : s.id))
+                  }
+                  selfUserId={user.id}
+                />
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );

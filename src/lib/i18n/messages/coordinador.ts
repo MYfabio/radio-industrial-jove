@@ -31,6 +31,9 @@ export const coordinadorMessages = defineMessages({
     es: "No se ha podido cargar el centro:",
     en: "Could not load the school:",
   },
+  tabRadio: { ca: "La ràdio", es: "La radio", en: "The radio" },
+  tabPeople: { ca: "Persones", es: "Personas", en: "People" },
+  tabPlays: { ca: "Escoltes", es: "Escuchas", en: "Plays" },
   domain: { ca: "Domini:", es: "Dominio:", en: "Domain:" },
   seeWall: {
     ca: "Veure el mur de l'escola",

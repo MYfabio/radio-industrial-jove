@@ -43,6 +43,9 @@ export const superadminMessages = defineMessages({
   },
   resolved: { ca: "Resolta", es: "Resuelta", en: "Resolved" },
   newSchool: { ca: "Nova escola", es: "Nuevo centro", en: "New school" },
+  tabSchools: { ca: "Escoles", es: "Centros", en: "Schools" },
+  tabRequests: { ca: "Sol·licituds", es: "Solicitudes", en: "Requests" },
+  tabPlays: { ca: "Escoltes", es: "Escuchas", en: "Plays" },
   schoolName: {
     ca: "Nom de l'escola",
     es: "Nombre del centro",

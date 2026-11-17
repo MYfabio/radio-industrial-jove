@@ -2,7 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Loader2, Settings, Check, Radio } from "lucide-react";
+import {
+  Loader2,
+  Settings,
+  Check,
+  Radio,
+  Users,
+  BarChart3,
+} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -144,80 +152,107 @@ function CoordinatorPanel() {
                 : tp("unknownError")}
             </p>
           ) : (
-            <div className="space-y-6">
-              <section className="space-y-5 rounded-2xl border border-border bg-card p-5">
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Radio className="size-4" /> {t("domain")}{" "}
-                  <code>@{data.school.google_domain}</code>
-                  {" · "}
-                  <Link
-                    to="/escola/$slug"
-                    params={{ slug: data.school.slug }}
-                    className="text-accent hover:underline"
-                  >
-                    {t("seeWall")}
-                  </Link>
-                </div>
+            <Tabs defaultValue="radio">
+              <TabsList className="mb-6 h-auto w-full flex-wrap justify-start gap-1 rounded-2xl p-1">
+                <TabsTrigger
+                  value="radio"
+                  className="gap-1.5 rounded-xl px-4 py-2"
+                >
+                  <Radio className="size-4" /> {t("tabRadio")}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="persones"
+                  className="gap-1.5 rounded-xl px-4 py-2"
+                >
+                  <Users className="size-4" /> {t("tabPeople")}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="escoltes"
+                  className="gap-1.5 rounded-xl px-4 py-2"
+                >
+                  <BarChart3 className="size-4" /> {t("tabPlays")}
+                </TabsTrigger>
+              </TabsList>
 
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("radioNameLabel")}
-                  </label>
-                  <Input
-                    value={radioName}
-                    onChange={(e) => setRadioName(e.target.value)}
-                    placeholder={t("radioNamePlaceholder")}
-                    className="mt-1"
-                  />
-                </div>
+              <TabsContent value="radio">
+                <section className="space-y-5 rounded-2xl border border-border bg-card p-5">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <Radio className="size-4" /> {t("domain")}{" "}
+                    <code>@{data.school.google_domain}</code>
+                    {" · "}
+                    <Link
+                      to="/escola/$slug"
+                      params={{ slug: data.school.slug }}
+                      className="text-accent hover:underline"
+                    >
+                      {t("seeWall")}
+                    </Link>
+                  </div>
 
-                <div>
-                  <label className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={allowSharing}
-                      onChange={(e) => setAllowSharing(e.target.checked)}
-                      className="mt-1 size-4"
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t("radioNameLabel")}
+                    </label>
+                    <Input
+                      value={radioName}
+                      onChange={(e) => setRadioName(e.target.value)}
+                      placeholder={t("radioNamePlaceholder")}
+                      className="mt-1"
                     />
-                    <span>
-                      <span className="block font-semibold">
-                        {t("allowSharingTitle")}
-                      </span>
-                      <span className="block text-sm text-muted-foreground">
-                        {t("allowSharingText")}
-                      </span>
-                    </span>
-                  </label>
-                </div>
+                  </div>
 
-                <div className="flex items-center gap-3">
-                  <Button
-                    onClick={() => void save()}
-                    disabled={saving || !radioName.trim()}
-                  >
-                    {saving ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Check className="size-4" />
+                  <div>
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={allowSharing}
+                        onChange={(e) => setAllowSharing(e.target.checked)}
+                        className="mt-1 size-4"
+                      />
+                      <span>
+                        <span className="block font-semibold">
+                          {t("allowSharingTitle")}
+                        </span>
+                        <span className="block text-sm text-muted-foreground">
+                          {t("allowSharingText")}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={() => void save()}
+                      disabled={saving || !radioName.trim()}
+                    >
+                      {saving ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Check className="size-4" />
+                      )}
+                      {tp("save")}
+                    </Button>
+                    {saved && (
+                      <span className="text-sm font-semibold text-accent">
+                        {tp("saved")}
+                      </span>
                     )}
-                    {tp("save")}
-                  </Button>
-                  {saved && (
-                    <span className="text-sm font-semibold text-accent">
-                      {tp("saved")}
-                    </span>
-                  )}
-                </div>
-              </section>
+                  </div>
+                </section>
+              </TabsContent>
 
-              <PlayStatsPanel />
+              <TabsContent value="persones">
+                <SchoolMembersManager
+                  data={data}
+                  selfUserId={user.id}
+                  queryKey={QUERY_KEY}
+                />
+              </TabsContent>
 
-              <SchoolMembersManager
-                data={data}
-                selfUserId={user.id}
-                queryKey={QUERY_KEY}
-              />
-            </div>
+              <TabsContent value="escoltes">
+                <PlayStatsPanel />
+              </TabsContent>
+            </Tabs>
           )}
         </div>
       </main>
