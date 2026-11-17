@@ -43,6 +43,36 @@ export const superadminMessages = defineMessages({
   },
   resolved: { ca: "Resolta", es: "Resuelta", en: "Resolved" },
   newSchool: { ca: "Nova escola", es: "Nuevo centro", en: "New school" },
+  notifyAndResolve: {
+    ca: "Avisa i resol",
+    es: "Avisa y resuelve",
+    en: "Notify and resolve",
+  },
+  notifyHint: {
+    ca: "Envia un correu «Ja tens accés» des d'aulaia.cat i marca-la com a resolta. Abans dona-li el rol de docent.",
+    es: "Envía un correo «Ya tienes acceso» desde aulaia.cat y la marca como resuelta. Antes dale el rol de docente.",
+    en: "Sends a “You now have access” email from aulaia.cat and marks it resolved. Give the teacher role first.",
+  },
+  notifyNoAccess: {
+    ca: "Encara no té rol de docent: dona-l'hi a l'escola abans d'avisar.",
+    es: "Todavía no tiene rol de docente: dáselo en su centro antes de avisar.",
+    en: "They don't have the teacher role yet: give it at their school before notifying.",
+  },
+  notifyNotConfigured: {
+    ca: "El correu no està configurat (falta CORREU_API_KEY o el servei d'aulaia.cat no l'accepta).",
+    es: "El correo no está configurado (falta CORREU_API_KEY o el servicio de aulaia.cat no la acepta).",
+    en: "Email is not set up (CORREU_API_KEY missing or rejected by aulaia.cat).",
+  },
+  notifyTooMany: {
+    ca: "Massa correus a aquesta adreça en l'última hora. Torna-ho a provar més tard.",
+    es: "Demasiados correos a esta dirección en la última hora. Vuelve a probar más tarde.",
+    en: "Too many emails to this address in the last hour. Try again later.",
+  },
+  notifyFailed: {
+    ca: "No s'ha pogut enviar el correu. No s'ha marcat com a resolta.",
+    es: "No se ha podido enviar el correo. No se ha marcado como resuelta.",
+    en: "The email could not be sent. It has not been marked resolved.",
+  },
   tabSchools: { ca: "Escoles", es: "Centros", en: "Schools" },
   tabRequests: { ca: "Sol·licituds", es: "Solicitudes", en: "Requests" },
   tabPlays: { ca: "Escoltes", es: "Escuchas", en: "Plays" },

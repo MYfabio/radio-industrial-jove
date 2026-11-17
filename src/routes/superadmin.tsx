@@ -15,6 +15,7 @@ import {
   ChevronUp,
   School,
   BarChart3,
+  Mail,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,8 @@ import {
 import {
   fetchAccessRequestsFn,
   resolveAccessRequestFn,
+  notifyAccessRequestFn,
+  type NotifyAccessError,
 } from "@/lib/accessRequests.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
 import { langFromMatches, tr, useT } from "@/lib/i18n";
@@ -92,6 +95,40 @@ function SuperAdminPanel() {
     await resolveRequest({ data: { id, resolved } });
     await qc.invalidateQueries({ queryKey: ["access-requests"] });
   };
+
+  const notifyRequest = useServerFn(notifyAccessRequestFn);
+  const [notifying, setNotifying] = useState<number | null>(null);
+  const [notifyErrors, setNotifyErrors] = useState<
+    Record<number, NotifyAccessError | "unknown">
+  >({});
+  const notify = async (id: number) => {
+    setNotifying(id);
+    setNotifyErrors((cur) => {
+      const next = { ...cur };
+      delete next[id];
+      return next;
+    });
+    try {
+      const res = await notifyRequest({ data: { id } });
+      if (res.sent) {
+        await qc.invalidateQueries({ queryKey: ["access-requests"] });
+      } else {
+        setNotifyErrors((cur) => ({ ...cur, [id]: res.error ?? "unknown" }));
+      }
+    } catch {
+      setNotifyErrors((cur) => ({ ...cur, [id]: "unknown" }));
+    } finally {
+      setNotifying(null);
+    }
+  };
+  const notifyErrorText = (e: NotifyAccessError | "unknown") =>
+    e === "sense-acces"
+      ? t("notifyNoAccess")
+      : e === "sense-clau" || e === "servei-tancat" || e === "no-autoritzat"
+        ? t("notifyNotConfigured")
+        : e === "massa-enviaments"
+          ? t("notifyTooMany")
+          : t("notifyFailed");
 
   const [name, setName] = useState("");
   const [radioName, setRadioName] = useState("");
@@ -253,13 +290,35 @@ function SuperAdminPanel() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => void toggleResolved(r.id, true)}
-                    >
-                      <Check className="size-3.5" /> {t("resolved")}
-                    </Button>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => void notify(r.id)}
+                          disabled={notifying === r.id}
+                          title={t("notifyHint")}
+                        >
+                          {notifying === r.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Mail className="size-3.5" />
+                          )}{" "}
+                          {t("notifyAndResolve")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => void toggleResolved(r.id, true)}
+                        >
+                          <Check className="size-3.5" /> {t("resolved")}
+                        </Button>
+                      </div>
+                      {notifyErrors[r.id] && (
+                        <p className="max-w-xs text-right text-xs text-destructive-foreground">
+                          {notifyErrorText(notifyErrors[r.id]!)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -4,9 +4,13 @@ import { describePgError } from "./pgError";
 import type { AccessRequestKind } from "./accessRequests.server";
 
 /** Missatges d'error en la llengua de qui fa la petició. */
-async function msg(key: keyof typeof import("./i18n/messages/serverPodcasts").serverPodcastsMessages, params?: Record<string, string | number>) {
+async function msg(
+  key: keyof typeof import("./i18n/messages/serverPodcasts").serverPodcastsMessages,
+  params?: Record<string, string | number>,
+) {
   const { st } = await import("./i18n/server");
-  const { serverPodcastsMessages } = await import("./i18n/messages/serverPodcasts");
+  const { serverPodcastsMessages } =
+    await import("./i18n/messages/serverPodcasts");
   return st(serverPodcastsMessages, key, params);
 }
 
@@ -49,9 +53,13 @@ export const submitAccessRequestFn = createServerFn({ method: "POST" })
     }
   });
 
-async function requireSuperAdmin(context: { userId: string; claims: Record<string, unknown> }) {
+async function requireSuperAdmin(context: {
+  userId: string;
+  claims: Record<string, unknown>;
+}) {
   const { getSql } = await import("./podcasts.server");
-  const { ensureSettingsSchema, getOrCreateProfile, isSuperAdminEmail } = await import("./settings.server");
+  const { ensureSettingsSchema, getOrCreateProfile, isSuperAdminEmail } =
+    await import("./settings.server");
   const { ensureSchoolsSchema } = await import("./schools.server");
   const sql = getSql();
   try {
@@ -92,7 +100,8 @@ export const resolveAccessRequestFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await requireSuperAdmin(context);
     const { getSql } = await import("./podcasts.server");
-    const { setAccessRequestResolved } = await import("./accessRequests.server");
+    const { setAccessRequestResolved } =
+      await import("./accessRequests.server");
     const sql = getSql();
     try {
       await setAccessRequestResolved(sql, data.id, data.resolved);
@@ -103,3 +112,50 @@ export const resolveAccessRequestFn = createServerFn({ method: "POST" })
       await sql.end();
     }
   });
+
+export type NotifyAccessError =
+  "no-trobada" | "sense-acces" | import("./correu.server").CorreuError;
+
+/**
+ * Super admin: avisa per correu (servei central d'aulaia.cat) que la persona
+ * ja té accés de docent i, si s'ha enviat, marca la sol·licitud com a
+ * resolta. Si encara no té rol de docent o coordinador, no s'envia res.
+ */
+export const notifyAccessRequestFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: number }) => input)
+  .handler(
+    async ({
+      context,
+      data,
+    }): Promise<{ sent: boolean; error?: NotifyAccessError }> => {
+      await requireSuperAdmin(context);
+      const { getSql } = await import("./podcasts.server");
+      const { ensureSettingsSchema } = await import("./settings.server");
+      const { getAccessGrant, setAccessRequestResolved } =
+        await import("./accessRequests.server");
+      const { enviaAccesConcedit } = await import("./correu.server");
+      const sql = getSql();
+      try {
+        await ensureSettingsSchema(sql);
+        const grant = await getAccessGrant(sql, Number(data.id));
+        if (!grant) return { sent: false, error: "no-trobada" };
+        if (grant.role !== "docent" && grant.role !== "coordinador") {
+          return { sent: false, error: "sense-acces" };
+        }
+        const result = await enviaAccesConcedit({
+          per: grant.email,
+          nom: grant.name.trim() || null,
+          centre: grant.schoolName,
+          idioma: "ca",
+        });
+        if (result.sent)
+          await setAccessRequestResolved(sql, Number(data.id), true);
+        return result;
+      } catch (err) {
+        throw new Error(describePgError(err));
+      } finally {
+        await sql.end();
+      }
+    },
+  );
