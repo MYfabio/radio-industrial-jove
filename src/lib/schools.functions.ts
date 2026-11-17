@@ -116,6 +116,8 @@ export interface UpdateSchoolAdminInput {
   radioName: string;
   googleDomain: string;
   coordinadorEmail: string;
+  /** Adreça del mur (/escola/<slug>). Buit = no es canvia. */
+  slug?: string;
 }
 
 /** Super admin: edita les dades bàsiques d'un centre. */
@@ -142,10 +144,13 @@ export const updateSchoolAdminFn = createServerFn({ method: "POST" })
           radioName: data.radioName.trim() || name,
           googleDomain: domain || null,
           coordinadorEmail: email || null,
+          slug: data.slug ?? null,
         });
       } catch (err) {
         if (err instanceof Error && err.message === "DOMAIN_TAKEN")
           throw new Error(await msg("domainTaken"));
+        if (err instanceof Error && err.message === "SLUG_TAKEN")
+          throw new Error(await msg("slugTaken"));
         throw err;
       }
       return { ok: true };
@@ -614,3 +619,38 @@ export const fetchMySchoolBasicsFn = createServerFn({ method: "GET" })
       }
     },
   );
+
+export interface PublicSchool {
+  slug: string;
+  radioName: string;
+  name: string;
+  podcasts: number;
+}
+
+/**
+ * Llista pública de ràdios d'escola: només les que tenen el mur obert a fora
+ * i algun pòdcast publicat. No cal sessió i no retorna res de privat.
+ */
+export const fetchPublicSchoolsFn = createServerFn({ method: "GET" }).handler(
+  async (): Promise<PublicSchool[]> => {
+    const { getSql, ensureSchema } = await import("./podcasts.server");
+    const { ensureClassesSchema } = await import("./classes.server");
+    const { listPublicSchools } = await import("./schools.server");
+    const sql = getSql();
+    try {
+      await ensureSchema(sql);
+      await ensureClassesSchema(sql);
+      const rows = await listPublicSchools(sql);
+      return rows.map((r) => ({
+        slug: r.slug,
+        radioName: r.radio_name,
+        name: r.name,
+        podcasts: r.podcasts,
+      }));
+    } catch (err) {
+      throw new Error(describePgError(err));
+    } finally {
+      await sql.end();
+    }
+  },
+);

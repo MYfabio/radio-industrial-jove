@@ -48,6 +48,16 @@ export const superadminMessages = defineMessages({
     es: "Nombre del centro",
     en: "School name",
   },
+  wallAddress: {
+    ca: "Adreça del mur de l'escola",
+    es: "Dirección del muro del centro",
+    en: "School wall address",
+  },
+  wallAddressHint: {
+    ca: "Només lletres, números i guions. Si la canvies, l'adreça antiga continua funcionant i porta a la nova.",
+    es: "Solo letras, números y guiones. Si la cambias, la dirección antigua sigue funcionando y lleva a la nueva.",
+    en: "Letters, numbers and hyphens only. If you change it, the old address keeps working and leads to the new one.",
+  },
   radioNameOptional: {
     ca: "Nom de la ràdio (opcional)",
     es: "Nombre de la radio (opcional)",

@@ -44,7 +44,7 @@ export function isMemberRole(value: unknown): value is MemberRole {
   return value === "alumne" || value === "docent" || value === "coordinador";
 }
 
-function slugify(input: string): string {
+export function slugify(input: string): string {
   const base = input
     .toLowerCase()
     .normalize("NFD")
@@ -71,6 +71,22 @@ export async function ensureSchoolsSchema(sql: Sql) {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  // Adreces antigues del mur: quan es canvia l'adreça d'una escola, la vella
+  // es guarda aquí perquè els enllaços ja repartits continuïn funcionant.
+  await sql.unsafe(
+    `ALTER TABLE schools ADD COLUMN IF NOT EXISTS old_slugs TEXT[] NOT NULL DEFAULT '{}'`,
+  );
+}
+
+/** Una adreça està agafada si és l'actual o una d'antiga d'una altra escola. */
+async function slugTaken(sql: Sql, slug: string, exceptId: number | null) {
+  const [taken] = await sql.unsafe(`
+    SELECT id FROM schools
+     WHERE (slug = ${sqlText(slug)} OR ${sqlText(slug)} = ANY(old_slugs))
+       ${exceptId !== null ? `AND id <> ${sqlInt(exceptId)}` : ""}
+     LIMIT 1
+  `);
+  return !!taken;
 }
 
 export async function createSchool(
@@ -93,8 +109,7 @@ export async function createSchool(
   let slug = base;
   for (let attempt = 0; attempt < 30; attempt++) {
     const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
-    const [taken] = await sql.unsafe(`SELECT id FROM schools WHERE slug = ${sqlText(candidate)}`);
-    if (!taken) {
+    if (!(await slugTaken(sql, candidate, null))) {
       slug = candidate;
       break;
     }
@@ -126,7 +141,13 @@ export async function getSchoolByDomain(sql: Sql, domain: string): Promise<Schoo
 
 export async function getSchoolBySlug(sql: Sql, slug: string): Promise<SchoolRow | null> {
   await ensureSchoolsSchema(sql);
-  const [row] = await sql.unsafe(`SELECT ${SCHOOL_COLUMNS} FROM schools WHERE slug = ${sqlText(slug)}`);
+  // També troba l'escola per una adreça antiga; la ruta redirigeix a l'actual.
+  const [row] = await sql.unsafe(`
+    SELECT ${SCHOOL_COLUMNS} FROM schools
+     WHERE slug = ${sqlText(slug)} OR ${sqlText(slug)} = ANY(old_slugs)
+     ORDER BY (slug = ${sqlText(slug)}) DESC
+     LIMIT 1
+  `);
   return (row as unknown as SchoolRow) ?? null;
 }
 
@@ -366,9 +387,33 @@ export async function deleteInvite(sql: Sql, schoolId: number, inviteId: number)
 export async function updateSchool(
   sql: Sql,
   id: number,
-  data: { name: string; radioName: string; googleDomain: string | null; coordinadorEmail: string | null },
+  data: {
+    name: string;
+    radioName: string;
+    googleDomain: string | null;
+    coordinadorEmail: string | null;
+    /** Adreça nova del mur (/escola/<slug>); buit o absent = no es toca. */
+    slug?: string | null;
+  },
 ) {
   await ensureSchoolsSchema(sql);
+  const wanted = data.slug?.trim() ? slugify(data.slug) : null;
+  if (wanted) {
+    const [current] = await sql.unsafe(
+      `SELECT slug FROM schools WHERE id = ${sqlInt(id)}`,
+    );
+    const currentSlug = current ? (current["slug"] as string) : null;
+    if (currentSlug && currentSlug !== wanted) {
+      if (await slugTaken(sql, wanted, id)) throw new Error("SLUG_TAKEN");
+      // L'adreça vella passa a la llista d'antigues (i la nova en surt, si hi era).
+      await sql.unsafe(`
+        UPDATE schools
+           SET slug = ${sqlText(wanted)},
+               old_slugs = array_append(array_remove(array_remove(old_slugs, ${sqlText(wanted)}), ${sqlText(currentSlug)}), ${sqlText(currentSlug)})
+         WHERE id = ${sqlInt(id)}
+      `);
+    }
+  }
   const domain = data.googleDomain?.trim().toLowerCase() || null;
   if (domain) {
     const [clash] = await sql.unsafe(
@@ -489,4 +534,31 @@ export function normalizeRole(value: string): MemberRole | null {
   }
   if (["coordinador", "coordinadora", "coordinator", "coord"].includes(v)) return "coordinador";
   return null;
+}
+
+export interface PublicSchoolRow {
+  slug: string;
+  radio_name: string;
+  name: string;
+  podcasts: number;
+}
+
+/**
+ * Escoles amb el mur obert a fora (el coordinador ho ha activat) i amb algun
+ * pòdcast aprovat i compartit. Són les úniques que es poden llistar en públic.
+ */
+export async function listPublicSchools(sql: Sql): Promise<PublicSchoolRow[]> {
+  await ensureSchoolsSchema(sql);
+  const rows = await sql.unsafe(`
+    SELECT s.slug, s.radio_name, s.name, COUNT(p.id)::int AS podcasts
+      FROM schools s
+      JOIN classes c ON c.school_id = s.id AND c.share_to_school = TRUE
+      JOIN podcasts p ON p.class_id = c.id
+       AND p.status = 'aprovat' AND (p.publish_at IS NULL OR p.publish_at <= now())
+     WHERE s.allow_external_sharing = TRUE
+     GROUP BY s.id
+     ORDER BY lower(s.name) ASC
+     LIMIT 200
+  `);
+  return rows as unknown as PublicSchoolRow[];
 }

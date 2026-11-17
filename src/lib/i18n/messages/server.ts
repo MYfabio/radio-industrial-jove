@@ -41,6 +41,11 @@ export const serverMessages = defineMessages({
     es: "Escribe un dominio de Google válido (p. ej. escuela.org).",
     en: "Enter a valid Google domain (e.g. school.org).",
   },
+  slugTaken: {
+    ca: "Aquesta adreça del mur ja la fa servir una altra escola.",
+    es: "Esta dirección del muro ya la usa otro centro.",
+    en: "Another school already uses this wall address.",
+  },
   domainTaken: {
     ca: "Ja hi ha una escola donada d'alta amb aquest domini.",
     es: "Ya hay un centro dado de alta con este dominio.",

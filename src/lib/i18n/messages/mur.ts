@@ -38,5 +38,15 @@ export const murMessages = defineMessages({
     es: "Aún no hay ningún pódcast aprobado. ¡Graba uno y pide que lo revisen!",
     en: "No approved podcasts yet. Record one and ask for it to be reviewed!",
   },
+  schoolsTitle: {
+    ca: "Ràdios de les escoles",
+    es: "Radios de los centros",
+    en: "School radios",
+  },
+  schoolsLead: {
+    ca: "Escolta els pòdcasts que cada escola ha obert a tothom.",
+    es: "Escucha los pódcasts que cada centro ha abierto a todo el mundo.",
+    en: "Listen to the podcasts each school has opened to everyone.",
+  },
   recordOne: { ca: "Gravar-ne un", es: "Grabar uno", en: "Record one" },
 });

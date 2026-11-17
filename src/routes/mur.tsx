@@ -4,7 +4,13 @@ import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
 import { useMySchool } from "@/components/WallLink";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import {
+  useQuery,
+  useSuspenseQuery,
+  queryOptions,
+} from "@tanstack/react-query";
+import { Radio } from "lucide-react";
+import { fetchPublicSchoolsFn } from "@/lib/schools.functions";
 import { fetchApprovedPodcasts } from "@/lib/podcasts.functions";
 import { SITE_NAME } from "@/lib/siteConfig";
 import { PodcastWallView } from "@/components/PodcastWall";
@@ -38,6 +44,54 @@ export const Route = createFileRoute("/mur")({
   component: Wall,
 });
 
+// Ràdios d'escola amb el mur obert a fora. No bloqueja el mur: si falla o
+// encara no n'hi ha cap, senzillament no surt la secció.
+const publicSchoolsQuery = queryOptions({
+  queryKey: ["schools", "public"],
+  queryFn: () => fetchPublicSchoolsFn(),
+  staleTime: 60_000,
+  retry: false,
+});
+
+function SchoolRadios() {
+  const t = useT(m);
+  const { data } = useQuery(publicSchoolsQuery);
+  if (!data || data.length === 0) return null;
+  return (
+    <section className="mb-8 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {t("schoolsTitle")}
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">{t("schoolsLead")}</p>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {data.map((s) => (
+          <li key={s.slug}>
+            <Link
+              to="/escola/$slug"
+              params={{ slug: s.slug }}
+              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary"
+            >
+              <Radio className="size-4 text-accent" />
+              <span>
+                {s.radioName}
+                {s.name && s.name !== s.radioName ? (
+                  <span className="font-normal text-muted-foreground">
+                    {" "}
+                    · {s.name}
+                  </span>
+                ) : null}
+              </span>
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                {s.podcasts}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Wall() {
   const { data: result } = useSuspenseQuery(wallQuery);
   const data = result.items;
@@ -53,6 +107,7 @@ function Wall() {
           description={t(data.length === 1 ? "countOne" : "countMany", { count: data.length })}
           canShare={result.allowExternalSharing}
           emptyMessage={t("empty")}
+          belowHeader={<SchoolRadios />}
           headerIcon={<Logo className="size-12" />}
           headerActions={
             <>

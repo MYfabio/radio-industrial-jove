@@ -401,6 +401,8 @@ export interface PodcastWallViewProps {
   emptyMessage?: string;
   headerIcon?: React.ReactNode;
   headerActions?: React.ReactNode;
+  /** Contingut propi de la ruta entre la capçalera i els pòdcasts. */
+  belowHeader?: React.ReactNode;
 }
 
 export function PodcastWallView({
@@ -413,6 +415,7 @@ export function PodcastWallView({
   emptyMessage,
   headerIcon,
   headerActions,
+  belowHeader,
 }: PodcastWallViewProps) {
   const t = useT(m);
   const qc = useQueryClient();
@@ -502,6 +505,8 @@ export function PodcastWallView({
         </div>
         <span className="ml-auto flex items-center gap-2">{headerActions}</span>
       </header>
+
+      {belowHeader}
 
       {locked ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border p-10 text-center">

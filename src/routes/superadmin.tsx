@@ -339,6 +339,7 @@ function SchoolCard({
   const [coordinadorEmail, setCoordinadorEmail] = useState(
     school.coordinador_email ?? "",
   );
+  const [slug, setSlug] = useState(school.slug);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -357,6 +358,7 @@ function SchoolCard({
           radioName,
           googleDomain: domain,
           coordinadorEmail,
+          slug,
         },
       });
       await qc.invalidateQueries({ queryKey: ["schools"] });
@@ -443,6 +445,24 @@ function SchoolCard({
                 onChange={(e) => setCoordinadorEmail(e.target.value)}
                 placeholder={t("coordinadorEmail")}
               />
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("wallAddress")}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    /escola/
+                  </span>
+                  <Input
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    placeholder="nom-escola"
+                  />
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {t("wallAddressHint")}
+                </span>
+              </label>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button

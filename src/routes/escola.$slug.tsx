@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
@@ -31,7 +31,20 @@ export const Route = createFileRoute("/escola/$slug")({
       ],
     };
   },
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(schoolWallQuery(params.slug)),
+  loader: async ({ context, params }) => {
+    const wall = await context.queryClient.ensureQueryData(
+      schoolWallQuery(params.slug),
+    );
+    // Adreça antiga d'una escola: es porta a l'actual sense trencar l'enllaç.
+    if (wall.slug !== params.slug) {
+      throw redirect({
+        to: "/escola/$slug",
+        params: { slug: wall.slug },
+        replace: true,
+      });
+    }
+    return wall;
+  },
   component: SchoolWall,
 });
 

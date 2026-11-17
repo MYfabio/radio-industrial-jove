@@ -192,7 +192,9 @@ export const fetchSchoolWall = createServerFn({ method: "GET" })
     async ({
       context,
       data,
-    }): Promise<ApprovedPodcastsResult & { radioName: string }> => {
+    }): Promise<
+      ApprovedPodcastsResult & { radioName: string; slug: string }
+    > => {
       const { getSql, listApprovedForSchool } =
         await import("./podcasts.server");
       const { getSchoolBySlug } = await import("./schools.server");
@@ -224,6 +226,7 @@ export const fetchSchoolWall = createServerFn({ method: "GET" })
               allowExternalSharing: false,
               items: [],
               radioName: school.radio_name,
+              slug: school.slug,
             };
           }
         }
@@ -235,6 +238,7 @@ export const fetchSchoolWall = createServerFn({ method: "GET" })
           allowExternalSharing: school.allow_external_sharing,
           items,
           radioName: school.radio_name,
+          slug: school.slug,
         };
       } catch (err) {
         throw new Error(describePgError(err));
