@@ -100,7 +100,7 @@ export async function createSchool(
   },
 ): Promise<SchoolRow> {
   await ensureSchoolsSchema(sql);
-  const domain = data.googleDomain?.trim().toLowerCase() || null;
+  const domain = data.googleDomain?.trim().toLowerCase().replace(/^@+/, "") || null;
   if (domain) {
     const [existing] = await sql.unsafe(`SELECT id FROM schools WHERE lower(google_domain) = ${sqlText(domain)}`);
     if (existing) throw new Error("DOMAIN_TAKEN");
@@ -414,7 +414,7 @@ export async function updateSchool(
       `);
     }
   }
-  const domain = data.googleDomain?.trim().toLowerCase() || null;
+  const domain = data.googleDomain?.trim().toLowerCase().replace(/^@+/, "") || null;
   if (domain) {
     const [clash] = await sql.unsafe(
       `SELECT id FROM schools WHERE lower(google_domain) = ${sqlText(domain)} AND id <> ${sqlInt(id)}`,

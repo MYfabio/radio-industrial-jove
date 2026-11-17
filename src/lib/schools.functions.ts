@@ -68,7 +68,7 @@ export const createSchoolFn = createServerFn({ method: "POST" })
     try {
       const name = data.name.trim();
       if (!name) throw new Error(await msg("schoolNameRequired"));
-      const domain = data.googleDomain.trim().toLowerCase();
+      const domain = data.googleDomain.trim().toLowerCase().replace(/^@+/, "");
       if (domain && !domain.includes("."))
         throw new Error(await msg("domainInvalid"));
       const email = data.coordinadorEmail.trim().toLowerCase();
@@ -132,7 +132,7 @@ export const updateSchoolAdminFn = createServerFn({ method: "POST" })
     try {
       const name = data.name.trim();
       if (!name) throw new Error(await msg("schoolNameRequired"));
-      const domain = data.googleDomain.trim().toLowerCase();
+      const domain = data.googleDomain.trim().toLowerCase().replace(/^@+/, "");
       if (domain && !domain.includes("."))
         throw new Error(await msg("domainInvalid"));
       const email = data.coordinadorEmail.trim().toLowerCase();
