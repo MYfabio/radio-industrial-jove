@@ -14,6 +14,7 @@ import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
 import { WallLink } from "@/components/WallLink";
+import { SchoolShowcase } from "@/components/SchoolShowcase";
 import { SITE_NAME, siteTagline, SITE_URL } from "@/lib/siteConfig";
 import { langFromMatches, tr, useLang, useT } from "@/lib/i18n";
 import { homeMessages as m } from "@/lib/i18n/messages/home";
@@ -126,6 +127,8 @@ function LandingPage() {
             {t("heroNote")}
           </p>
         </section>
+
+        <SchoolShowcase />
 
         {/* Problema i perfil */}
         <section className="mt-16 grid gap-4 sm:mt-24 sm:grid-cols-2">

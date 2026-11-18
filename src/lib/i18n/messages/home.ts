@@ -30,6 +30,22 @@ export const homeMessages = defineMessages({
   },
 
   // Capçalera
+  showcaseTitle: {
+    ca: "Així sona la ràdio d'una escola",
+    es: "Así suena la radio de un centro",
+    en: "What a school radio sounds like",
+  },
+  showcaseLead: {
+    ca: "{count} pòdcasts fets per alumnes i publicats al mur obert del seu centre.",
+    es: "{count} pódcasts hechos por alumnos y publicados en el muro abierto de su centro.",
+    en: "{count} podcasts made by students and published on their school's open wall.",
+  },
+  showcaseAll: {
+    ca: "Escolta tot el mur",
+    es: "Escucha todo el muro",
+    en: "Listen to the whole wall",
+  },
+  showcaseAnon: { ca: "Anònim", es: "Anónimo", en: "Anonymous" },
   classWallLink: {
     ca: "Mur de la classe",
     es: "Muro de la clase",

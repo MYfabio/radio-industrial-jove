@@ -27,5 +27,12 @@ export const SITE_URL = "https://www.radioescolar.cat";
  */
 export const SUPPORT_EMAIL = "info@radioescolar.cat";
 
+/**
+ * Escola que surt de mostra a la portada (adreça del seu mur, /escola/<slug>).
+ * Només es mostra si té el mur obert a fora. Una adreça antiga també serveix:
+ * el servidor la resol a l'actual.
+ */
+export const SHOWCASE_SCHOOL_SLUG = "radio-escolar";
+
 /** Plantilla de Canva per fer caràtules de pòdcast (mateix disseny per a tota la classe). */
 export const CANVA_COVER_TEMPLATE_URL = "https://www.canva.com/d/XLXcBPP7gjLNKz0";
