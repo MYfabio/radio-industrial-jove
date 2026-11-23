@@ -5,6 +5,7 @@
  */
 import type { Sql } from "./podcasts.server";
 import { sqlText, sqlInt, sqlBool } from "./sqlLiteral";
+import { enviarAvis } from "./avisos";
 
 export interface SchoolRow {
   id: number;
@@ -514,6 +515,10 @@ export async function importMembers(
     });
     if (outcome === "updated") result.updated++;
     else result.invited++;
+  }
+  // Un sol avís per importació, només amb recomptes: ni noms ni correus.
+  if (result.invited > 0) {
+    await enviarAvis({ tipus: "alta.solicitud", centre: null, datos: { invitacions: result.invited, actualitzats: result.updated } });
   }
   return result;
 }
