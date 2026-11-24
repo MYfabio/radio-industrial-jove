@@ -24,6 +24,8 @@ export const Route = createFileRoute("/escola/$slug")({
     const lang = langFromMatches(matches);
     return {
       meta: [
+        // La ràdio de cada escola mostra pòdcasts amb veus d'alumnat menor: fora dels cercadors.
+        { name: "robots", content: "noindex, nofollow" },
         { title: tr(lang, m, "metaTitle", { site: SITE_NAME }) },
         { name: "description", content: tr(lang, m, "metaDescription") },
         { property: "og:type", content: "website" },

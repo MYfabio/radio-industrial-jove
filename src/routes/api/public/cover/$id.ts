@@ -16,6 +16,7 @@ export const Route = createFileRoute("/api/public/cover/$id")({
               "Content-Type": found.mime,
               "Cache-Control": "public, max-age=31536000, immutable",
               "Access-Control-Allow-Origin": "*",
+              "X-Robots-Tag": "noindex",
             },
           });
         } finally {

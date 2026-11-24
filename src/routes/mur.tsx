@@ -31,6 +31,8 @@ export const Route = createFileRoute("/mur")({
     const lang = langFromMatches(matches);
     return {
       meta: [
+        // El mur mostra pòdcasts amb veus d'alumnat menor: fora dels cercadors.
+        { name: "robots", content: "noindex, nofollow" },
         { title: tr(lang, m, "metaTitle", { site: SITE_NAME }) },
         { name: "description", content: tr(lang, m, "metaDescription") },
         { property: "og:title", content: tr(lang, m, "ogTitle", { site: SITE_NAME }) },

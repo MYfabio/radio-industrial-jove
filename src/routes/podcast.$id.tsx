@@ -47,7 +47,9 @@ export const Route = createFileRoute("/podcast/$id")({
     const description =
       p.desc || tr(lang, m, "metaDescription", { site: radio });
     const url = `${SITE_URL}/podcast/${params.id}`;
+    // Veus d'alumnat menor: l'enllaç es pot compartir, però els cercadors no l'indexen.
     const meta = [
+      { name: "robots", content: "noindex, nofollow" },
       { title: `${p.title} — ${radio}` },
       { name: "description", content: description },
       { property: "og:type", content: "music.song" },
@@ -67,7 +69,7 @@ export const Route = createFileRoute("/podcast/$id")({
         content: `${SITE_URL}/api/public/cover/${p.id}`,
       });
     }
-    return { meta, links: [{ rel: "canonical", href: url }] };
+    return { meta };
   },
   component: PodcastPage,
 });
