@@ -5,7 +5,7 @@
  */
 import type { Sql } from "./podcasts.server";
 import { sqlText, sqlInt, sqlBool } from "./sqlLiteral";
-import { enviarAvis } from "./avisos";
+import { dominiDe, enviarAvis } from "./avisos";
 
 export interface SchoolRow {
   id: number;
@@ -479,6 +479,7 @@ export async function importMembers(
   const before = new Set((await listClassesBySchool(sql, schoolId)).map((c) => c.id));
   const result: ImportResult = { updated: 0, invited: 0, classesCreated: [], errors: [] };
   const classCache = new Map<string, number>();
+  let centreAvis: string | null = null;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;
@@ -514,11 +515,14 @@ export async function importMembers(
       createdBy,
     });
     if (outcome === "updated") result.updated++;
-    else result.invited++;
+    else {
+      result.invited++;
+      centreAvis ??= dominiDe(email);
+    }
   }
-  // Un sol avís per importació, només amb recomptes: ni noms ni correus.
+  // Un sol avís per importació, només amb recomptes i el domini del centre: ni noms ni correus.
   if (result.invited > 0) {
-    await enviarAvis({ tipus: "alta.solicitud", centre: null, datos: { invitacions: result.invited, actualitzats: result.updated } });
+    await enviarAvis({ tipus: "alta.solicitud", centre: centreAvis, datos: { invitacions: result.invited, actualitzats: result.updated } });
   }
   return result;
 }
