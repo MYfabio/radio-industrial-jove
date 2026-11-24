@@ -95,15 +95,82 @@ export const homeMessages = defineMessages({
     es: "Hacer radio en el aula suele exigir equipos, programas de edición y mucho tiempo del docente. Aquí el alumnado graba, edita con IA y publica desde el navegador, con la supervisión del profesorado.",
     en: "Making radio in class usually needs equipment, editing software and a lot of teacher time. Here students record, edit with AI and publish from the browser, supervised by their teachers.",
   },
+  whatTitle: {
+    ca: "Què és {site}?",
+    es: "¿Qué es {site}?",
+    en: "What is {site}?",
+  },
+  whatText: {
+    ca: "{site} és un estudi de ràdio i pòdcast que funciona directament al navegador, sense instal·lar res. L'alumnat tria una plantilla, grava amb efectes de so en directe i, amb un clic, la IA retalla silencis, transcriu la veu i proposa títol, resum i capítols. El professorat revisa cada pòdcast abans que surti al mur de la classe.",
+    es: "{site} es un estudio de radio y pódcast que funciona directamente en el navegador, sin instalar nada. El alumnado elige una plantilla, graba con efectos de sonido en directo y, con un clic, la IA recorta silencios, transcribe la voz y propone título, resumen y capítulos. El profesorado revisa cada pódcast antes de que salga en el muro de la clase.",
+    en: "{site} is a radio and podcast studio that runs straight in the browser, with nothing to install. Students pick a template, record with live sound effects and, in one click, AI trims silences, transcribes the voice and suggests a title, summary and chapters. Teachers review every podcast before it appears on the class wall.",
+  },
   profileTitle: {
-    ca: "Per a quina etapa o perfil serveix?",
-    es: "¿Para qué etapa o perfil sirve?",
-    en: "Which stage or profile is it for?",
+    ca: "Per a qui és?",
+    es: "¿Para quién es?",
+    en: "Who is it for?",
   },
   profileText: {
-    ca: "Primària, Secundària i Batxillerat. Docents de llengua i comunicació oral, i coordinacions de projectes de comunicació del centre.",
-    es: "Primaria, Secundaria y Bachillerato. Docentes de lengua y comunicación oral, y coordinaciones de proyectos de comunicación del centro.",
-    en: "Primary, Secondary and Bachillerato. Language and oral-communication teachers, and school communication project coordinators.",
+    ca: "És per a l'alumnat i el professorat de Primària, Secundària i Batxillerat, sobretot docents de llengua i comunicació oral i coordinacions de projectes de comunicació del centre. L'alumnat pot gravar sense crear cap compte; el docent inicia sessió amb Google per crear la seva classe, compartir-ne el codi d'invitació i revisar els pòdcasts.",
+    es: "Es para el alumnado y el profesorado de Primaria, Secundaria y Bachillerato, sobre todo docentes de lengua y comunicación oral y coordinaciones de proyectos de comunicación del centro. El alumnado puede grabar sin crear ninguna cuenta; el docente inicia sesión con Google para crear su clase, compartir su código de invitación y revisar los pódcasts.",
+    en: "It is for students and teachers in Primary, Secondary and Bachillerato, especially language and oral-communication teachers and school communication project coordinators. Students can record without creating an account; teachers sign in with Google to create their class, share its invite code and review the podcasts.",
+  },
+
+  // Preguntes freqüents (visibles a la portada i també a les dades estructurades)
+  faqTitle: {
+    ca: "Preguntes freqüents",
+    es: "Preguntas frecuentes",
+    en: "Frequently asked questions",
+  },
+  faq1Q: {
+    ca: "Cal crear un compte per gravar?",
+    es: "¿Hace falta crear una cuenta para grabar?",
+    en: "Do I need an account to record?",
+  },
+  faq1A: {
+    ca: "No. L'alumnat pot gravar i enviar pòdcasts sense cap compte. Només cal iniciar sessió amb Google per tenir una classe pròpia o \"El meu espai\", on es gestionen els pòdcasts i els preferits.",
+    es: "No. El alumnado puede grabar y enviar pódcasts sin ninguna cuenta. Solo hace falta iniciar sesión con Google para tener una clase propia o \"Mi espacio\", donde se gestionan los pódcasts y los favoritos.",
+    en: "No. Students can record and submit podcasts without an account. You only need to sign in with Google to have your own class or \"My space\", where podcasts and favourites are managed.",
+  },
+  faq2Q: {
+    ca: "Qui decideix què es publica?",
+    es: "¿Quién decide qué se publica?",
+    en: "Who decides what gets published?",
+  },
+  faq2A: {
+    ca: "El professorat. Cada pòdcast queda pendent fins que un docent l'escolta al panell de revisió, hi pot deixar un comentari privat i decideix quan surt al mur.",
+    es: "El profesorado. Cada pódcast queda pendiente hasta que un docente lo escucha en el panel de revisión, puede dejar un comentario privado y decide cuándo sale en el muro.",
+    en: "Teachers. Every podcast stays pending until a teacher listens to it in the review panel, can leave a private comment and decides when it goes on the wall.",
+  },
+  faq3Q: {
+    ca: "Cal instal·lar algun programa?",
+    es: "¿Hay que instalar algún programa?",
+    en: "Do I need to install any software?",
+  },
+  faq3A: {
+    ca: "No. La gravació, la galeria de sons i l'edició amb IA funcionen directament al navegador, sense cap eina externa.",
+    es: "No. La grabación, la galería de sonidos y la edición con IA funcionan directamente en el navegador, sin ninguna herramienta externa.",
+    en: "No. Recording, the sound gallery and AI editing all work straight in the browser, with no external tools.",
+  },
+  faq4Q: {
+    ca: "El mur de la classe és públic?",
+    es: "¿El muro de la clase es público?",
+    en: "Is the class wall public?",
+  },
+  faq4A: {
+    ca: "Per defecte, el mur és privat de l'escola. El centre decideix si l'obre a fora o el manté només per a la seva comunitat.",
+    es: "Por defecto, el muro es privado de la escuela. El centro decide si lo abre al exterior o lo mantiene solo para su comunidad.",
+    en: "By default the wall is private to the school. The school decides whether to open it to the outside or keep it for its own community.",
+  },
+  faq5Q: {
+    ca: "Quant costa?",
+    es: "¿Cuánto cuesta?",
+    en: "How much does it cost?",
+  },
+  faq5A: {
+    ca: "Res. És un recurs educatiu gratuït i obert a qualsevol escola.",
+    es: "Nada. Es un recurso educativo gratuito y abierto a cualquier escuela.",
+    en: "Nothing. It is a free educational resource open to any school.",
   },
 
   // Com funciona

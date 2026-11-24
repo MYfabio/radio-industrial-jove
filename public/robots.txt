@@ -1,16 +1,79 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Cercadors (Google, Bing...) i previsualitzacions d'enllaços: poden entrar a tot
+# el que és públic. Els panells, l'espai personal, les invitacions i les classes
+# (que porten el codi de la classe a l'adreça) queden fora.
 User-agent: *
 Allow: /
+Allow: /api/public/
+Disallow: /api/
+Disallow: /_serverFn/
+Disallow: /mestre
+Disallow: /coordinador
+Disallow: /superadmin
+Disallow: /espai
+Disallow: /adeu
+Disallow: /uneix/
+Disallow: /classe/
+
+# Assistents que llegeixen una pàgina per respondre i la citen amb enllaç: poden entrar.
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: DuckAssistBot
+User-agent: MistralAI-User
+Allow: /
+Allow: /api/public/
+Disallow: /api/
+Disallow: /_serverFn/
+Disallow: /mestre
+Disallow: /coordinador
+Disallow: /superadmin
+Disallow: /espai
+Disallow: /adeu
+Disallow: /uneix/
+Disallow: /classe/
+
+# Rastrejadors que recullen webs per entrenar models d'IA i programes que copien webs sencers: no poden entrar.
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+User-agent: CCBot
+User-agent: Bytespider
+User-agent: TikTokSpider
+User-agent: meta-externalagent
+User-agent: FacebookBot
+User-agent: Amazonbot
+User-agent: cohere-ai
+User-agent: cohere-training-data-crawler
+User-agent: Diffbot
+User-agent: omgili
+User-agent: omgilibot
+User-agent: AI2Bot
+User-agent: Ai2Bot-Dolma
+User-agent: ImagesiftBot
+User-agent: Timpibot
+User-agent: VelenPublicWebCrawler
+User-agent: PanguBot
+User-agent: img2dataset
+User-agent: ICC-Crawler
+User-agent: Kangaroo Bot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Webzio-Extended
+User-agent: HTTrack
+User-agent: Wget
+User-agent: Scrapy
+User-agent: WebCopier
+User-agent: WebZIP
+User-agent: Teleport Pro
+User-agent: Offline Explorer
+User-agent: SiteSnagger
+User-agent: WebStripper
+User-agent: WebReaper
+User-agent: SiteSucker
+User-agent: WebWhacker
+Disallow: /
 
 Sitemap: https://www.radioescolar.cat/sitemap.xml

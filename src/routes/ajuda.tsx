@@ -3,7 +3,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { Logo } from "@/components/Logo";
-import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/siteConfig";
+import { SITE_NAME, SITE_URL, SUPPORT_EMAIL } from "@/lib/siteConfig";
 import { langFromMatches, tr, useT } from "@/lib/i18n";
 import { ajudaMessages as m } from "@/lib/i18n/messages/ajuda";
 import { RecordingGuide } from "@/components/RecordingGuide";
@@ -18,7 +18,11 @@ export const Route = createFileRoute("/ajuda")({
           name: "description",
           content: tr(lang, m, "metaDescription"),
         },
+        { property: "og:title", content: tr(lang, m, "metaTitle", { siteName: SITE_NAME }) },
+        { property: "og:description", content: tr(lang, m, "metaDescription") },
+        { property: "og:url", content: `${SITE_URL}/ajuda` },
       ],
+      links: [{ rel: "canonical", href: `${SITE_URL}/ajuda` }],
     };
   },
   component: HelpPage,

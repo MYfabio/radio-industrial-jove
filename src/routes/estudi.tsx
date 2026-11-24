@@ -44,7 +44,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EFFECTS, playEffect, type EffectId } from "@/lib/soundEffects";
-import { SITE_NAME, CANVA_COVER_TEMPLATE_URL } from "@/lib/siteConfig";
+import { SITE_NAME, SITE_URL, CANVA_COVER_TEMPLATE_URL } from "@/lib/siteConfig";
 import { autoEdit, type AutoEditResult } from "@/lib/autoEdit";
 import {
   BG_TRACKS,
@@ -94,8 +94,10 @@ export const Route = createFileRoute("/estudi")({
         },
         { property: "og:description", content: tr(lang, m, "ogDescription") },
         { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary_large_image" },
+        { property: "og:url", content: `${SITE_URL}/estudi` },
+        { name: "twitter:card", content: "summary" },
       ],
+      links: [{ rel: "canonical", href: `${SITE_URL}/estudi` }],
     };
   },
   component: RadioStudio,

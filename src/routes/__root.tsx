@@ -101,7 +101,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: ogDescription },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: lang === "es" ? "es_ES" : lang === "en" ? "en_GB" : "ca_ES" },
-      { name: "twitter:card", content: "summary_large_image" },
+      // Sense imatge de previsualització general: targeta petita. Les pàgines
+      // de pòdcast amb caràtula ja demanen la gran pel seu compte.
+      { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: SITE_NAME },
       { name: "twitter:description", content: ogDescription },
     ],

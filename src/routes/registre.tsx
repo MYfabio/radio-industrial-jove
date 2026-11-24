@@ -13,7 +13,7 @@ import {
   submitAccessRequestFn,
   type SubmitAccessRequestInput,
 } from "@/lib/accessRequests.functions";
-import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/siteConfig";
+import { SITE_NAME, SITE_URL, SUPPORT_EMAIL } from "@/lib/siteConfig";
 import { langFromMatches, tr, useT } from "@/lib/i18n";
 import { registreMessages as m } from "@/lib/i18n/messages/registre";
 
@@ -27,7 +27,11 @@ export const Route = createFileRoute("/registre")({
           name: "description",
           content: tr(lang, m, "metaDescription"),
         },
+        { property: "og:title", content: tr(lang, m, "metaTitle", { siteName: SITE_NAME }) },
+        { property: "og:description", content: tr(lang, m, "metaDescription") },
+        { property: "og:url", content: `${SITE_URL}/registre` },
       ],
+      links: [{ rel: "canonical", href: `${SITE_URL}/registre` }],
     };
   },
   component: RegisterPage,

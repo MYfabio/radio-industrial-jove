@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/siteConfig";
 
-const STATIC_PATHS = ["/", "/estudi", "/mur", "/ajuda", "/registre", "/privacitat", "/termes"];
+// Privacitat i condicions porten `noindex`: no tenen lloc al mapa del lloc.
+const STATIC_PATHS = ["/", "/estudi", "/mur", "/ajuda", "/registre"];
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {

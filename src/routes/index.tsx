@@ -16,42 +16,99 @@ import { Logo } from "@/components/Logo";
 import { WallLink } from "@/components/WallLink";
 import { SchoolShowcase } from "@/components/SchoolShowcase";
 import { SITE_NAME, siteTagline, SITE_URL } from "@/lib/siteConfig";
-import { langFromMatches, tr, useLang, useT } from "@/lib/i18n";
+import { langFromMatches, tr, useLang, useT, type Lang } from "@/lib/i18n";
 import { homeMessages as m } from "@/lib/i18n/messages/home";
 
 /** L alta de centre es unica per a totes les apps i viu a aulaia.cat. */
 const ALTA_URL = "https://www.aulaia.cat/alta?app=radio-escolar";
 
-const JSON_LD = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: SITE_NAME,
-  applicationCategory: "EducationalApplication",
-  url: SITE_URL,
-  isAccessibleForFree: true,
-};
+/** Adreça canònica de la portada (amb la barra final, com la serveix el domini). */
+const HOME_URL = `${SITE_URL}/`;
+
+/**
+ * Preguntes freqüents de la portada. Les mateixes claus omplen el bloc visible
+ * i el FAQPage de les dades estructurades: no n'hi pot haver cap que no es vegi.
+ */
+const FAQ = [
+  { q: "faq1Q", a: "faq1A" },
+  { q: "faq2Q", a: "faq2A" },
+  { q: "faq3Q", a: "faq3A" },
+  { q: "faq4Q", a: "faq4A" },
+  { q: "faq5Q", a: "faq5A" },
+] as const;
+
+/** Dades estructurades (schema.org) de la portada, en la llengua del render. */
+function jsonLd(lang: Lang) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${HOME_URL}#web`,
+        url: HOME_URL,
+        name: SITE_NAME,
+        inLanguage: lang,
+        publisher: { "@id": "https://www.aulaia.cat/#organitzacio" },
+      },
+      {
+        "@type": "WebApplication",
+        "@id": `${HOME_URL}#app`,
+        name: SITE_NAME,
+        url: HOME_URL,
+        description: tr(lang, m, "jsonLdDescription"),
+        applicationCategory: "EducationalApplication",
+        operatingSystem: "Web",
+        browserRequirements: "Requereix un navegador modern amb accés al micròfon",
+        inLanguage: lang,
+        educationalLevel: ["Primària", "Secundària", "Batxillerat"],
+        audience: { "@type": "EducationalAudience", educationalRole: "teacher" },
+        isAccessibleForFree: true,
+        provider: {
+          "@type": "Organization",
+          "@id": "https://www.aulaia.cat/#organitzacio",
+          name: "aulaia.cat",
+          url: "https://www.aulaia.cat/",
+        },
+        isPartOf: { "@id": `${HOME_URL}#web` },
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${HOME_URL}#preguntes`,
+        url: HOME_URL,
+        inLanguage: lang,
+        mainEntity: FAQ.map(({ q, a }) => ({
+          "@type": "Question",
+          name: tr(lang, m, q),
+          acceptedAnswer: { "@type": "Answer", text: tr(lang, m, a) },
+        })),
+      },
+    ],
+  };
+}
 
 export const Route = createFileRoute("/")({
   head: ({ matches }) => {
     const lang = langFromMatches(matches);
+    const title = tr(lang, m, "ogTitle", { site: SITE_NAME });
+    const description = tr(lang, m, "ogDescription");
     return {
       meta: [
         { title: tr(lang, m, "metaTitle", { site: SITE_NAME }) },
         { name: "description", content: tr(lang, m, "metaDescription") },
-        { property: "og:title", content: tr(lang, m, "ogTitle", { site: SITE_NAME }) },
-        { property: "og:description", content: tr(lang, m, "ogDescription") },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
         { property: "og:type", content: "website" },
-        { property: "og:url", content: SITE_URL },
-        { name: "twitter:card", content: "summary_large_image" },
+        { property: "og:url", content: HOME_URL },
+        // No hi ha cap imatge de previsualització adequada (només la icona SVG,
+        // que les xarxes no accepten): targeta petita, sense imatge.
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        // TanStack només pinta a <head> el JSON-LD que va dins `meta`
+        // (l'antic `scripts` del head no arribava a l'HTML).
+        { "script:ld+json": jsonLd(lang) },
       ],
-      links: [{ rel: "canonical", href: SITE_URL }],
-      scripts: [
-        {
-          tag: "script",
-          attrs: { type: "application/ld+json" },
-          children: JSON.stringify({ ...JSON_LD, description: tr(lang, m, "jsonLdDescription") }),
-        },
-      ],
+      links: [{ rel: "canonical", href: HOME_URL }],
     };
   },
   component: LandingPage,
@@ -130,8 +187,12 @@ function LandingPage() {
 
         <SchoolShowcase />
 
-        {/* Problema i perfil */}
+        {/* Què és, problema i perfil */}
         <section className="mt-16 grid gap-4 sm:mt-24 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:col-span-2">
+            <h2 className="text-base font-bold">{t("whatTitle", { site: SITE_NAME })}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{t("whatText", { site: SITE_NAME })}</p>
+          </div>
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <h2 className="text-base font-bold">{t("problemTitle")}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{t("problemText")}</p>
@@ -194,6 +255,21 @@ function LandingPage() {
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium">
             <ShieldCheck className="size-3.5 text-accent" /> {t("featurePrivate")}
           </span>
+        </section>
+
+        {/* Preguntes freqüents */}
+        <section className="mt-16 sm:mt-24">
+          <h2 className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("faqTitle")}
+          </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {FAQ.map(({ q, a }) => (
+              <div key={q} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <h3 className="text-sm font-bold">{t(q)}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{t(a)}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* CTA final */}
