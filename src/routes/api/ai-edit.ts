@@ -1,4 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { avisarFallada, dinsDelLimit, motiuDeExcepcio, motiuDeResposta } from "../../lib/iaFallades.server";
+
+/** Àudio màxim que s'envia a la IA (un pòdcast escolar en WAV de pocs minuts). */
+const MAX_AUDIO_BYTES = 40 * 1024 * 1024;
+const TEMPS_MAXIM_MS = Number(process.env["AI_EDIT_TIMEOUT_MS"]) || 120_000;
 
 /**
  * Edición con IA: Gemini escucha directamente el audio (transcripción +
@@ -46,21 +51,31 @@ export const Route = createFileRoute("/api/ai-edit")({
         if (!key) return new Response("Falta GEMINI_API_KEY", { status: 500 });
         const model = process.env["GEMINI_MODEL"] || "gemini-flash-latest";
 
+        // Sense sessió obligatòria (el plató funciona sense entrar): límit per connexió.
+        // L'adreça que posa el proxy de Railway (la darrera de x-forwarded-for); la primera la pot inventar qui crida.
+        const ip = request.headers.get("x-real-ip")?.trim() || request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || "sense-ip";
+        if (!dinsDelLimit(ip)) return new Response("límit", { status: 429 });
+
         const form = await request.formData();
         const file = form.get("audio");
         if (!(file instanceof File)) {
           return new Response(await msg("aiMissingAudio"), { status: 400 });
         }
+        if (file.size > MAX_AUDIO_BYTES) return new Response("massa gran", { status: 413 });
 
         const audioBase64 = await fileToBase64(file);
         const mimeType = file.type || "audio/webm";
         const prompt = promptFor(await msg("aiNoVoiceTitle"), await msg("aiWriteIn"));
 
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+        let geminiRes: Response;
+        try {
+        geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            // La clau a la capçalera, no a l'adreça: així no queda als registres.
+            headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+            signal: AbortSignal.timeout(TEMPS_MAXIM_MS),
             body: JSON.stringify({
               contents: [
                 {
@@ -74,22 +89,32 @@ export const Route = createFileRoute("/api/ai-edit")({
             }),
           },
         );
+        } catch (e) {
+          avisarFallada(motiuDeExcepcio(e), model);
+          return new Response("temps", { status: 504 });
+        }
 
         if (!geminiRes.ok) {
           const body = await geminiRes.text();
-          console.error(`Edició IA amb Gemini ha fallat [${geminiRes.status}]: ${body}`);
-          return new Response(body, { status: geminiRes.status });
+          console.error(`Edició IA amb Gemini ha fallat [${geminiRes.status}]`);
+          const motiu = motiuDeResposta(geminiRes.status, body);
+          avisarFallada(motiu, model);
+          // 402 = s'ha acabat la quota (el plató diu que tornin a provar-ho més endavant); 429 = esperar un minut.
+          if (motiu === "cupo-dia") return new Response("quota", { status: 402 });
+          return new Response(String(geminiRes.status), { status: geminiRes.status === 429 ? 429 : 502 });
         }
 
         const data = (await geminiRes.json()) as {
           candidates?: { content?: { parts?: { text?: string }[] } }[];
         };
         const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+        if (raw === "{}" || !raw.trim()) avisarFallada("buida", model);
 
         let parsed: Partial<AiEditResult> = {};
         try {
           parsed = JSON.parse(raw.replace(/^```json\s*|```$/g, "").trim());
         } catch {
+          avisarFallada("format", model);
           parsed = {};
         }
 
