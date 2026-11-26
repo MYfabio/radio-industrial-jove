@@ -97,3 +97,8 @@ export default {
     }
   },
 };
+
+// Informe d'activitat cap a aulaia.cat (només amb AULAIA_ACTIVITAT_CLAU): s'engega un cop en carregar el servidor.
+if (process.env["AULAIA_ACTIVITAT_CLAU"]) {
+  void import("./lib/activitat.server").then((m) => m.iniciarInformeActivitat()).catch(() => undefined);
+}
